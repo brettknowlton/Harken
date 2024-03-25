@@ -21,7 +21,9 @@ pub fn main_menu_plugin(app: &mut App) {
         .add_systems(Update, countdown.run_if(in_state(MainMenuState::Splash)))
         .add_systems(OnExit(MainMenuState::Splash), despawn_screen::<OnSplashScreen>)
 
-        .add_systems(OnEnter(MainMenuState::Main), main_menu_setup);
+        .add_systems(OnEnter(MainMenuState::Main), main_menu_setup),
+        .add_systems(OnExit(MainMenuState::Main), despawn_screen<OnMainMenu>),
+
 
     }
 

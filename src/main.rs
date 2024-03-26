@@ -1,35 +1,19 @@
 use bevy::prelude::*;
 mod menu;
 
+mod resources;
 
-#[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
-pub enum GameState {
-    #[default]
-    MainMenu,
-    Running,
-    PauseMenu,
-}
-
-#[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
-enum DisplayQuality {
-    Low,
-    Medium,
-    High,
-}
-
-#[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
-struct Volume(u32);
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         
-        .insert_resource(DisplayQuality::Medium)
-        .insert_resource(Volume(7))
+        .insert_resource(resources::DisplayQuality::Medium)
+        .insert_resource(resources::Volume(50))
 
         .add_systems(Startup, setup)
 
-        .init_state::<GameState>()
+        .init_state::<resources::GameState>()
 
         .add_plugins(menu::main_menu_plugin)
         .run();

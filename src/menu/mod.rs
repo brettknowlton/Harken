@@ -1,6 +1,5 @@
 use bevy::{app::AppExit, prelude::*};
-use super::{despawn_screen, GameState};
-
+use super::{despawn_screen, resources::GameState};
 
 const TEXT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 
@@ -21,8 +20,8 @@ pub fn main_menu_plugin(app: &mut App) {
         .add_systems(Update, countdown.run_if(in_state(MainMenuState::Splash)))
         .add_systems(OnExit(MainMenuState::Splash), despawn_screen::<OnSplashScreen>)
 
-        .add_systems(OnEnter(MainMenuState::Main), main_menu_setup),
-        .add_systems(OnExit(MainMenuState::Main), despawn_screen<OnMainMenu>),
+        .add_systems(OnEnter(MainMenuState::Main), main_menu_setup)
+        .add_systems(OnExit(MainMenuState::Main), despawn_screen::<OnMainMenu>);
 
 
     }
@@ -139,8 +138,10 @@ fn main_menu_setup(
 
                     // Display three buttons for each action available from the main menu:
                     // - new game
+                    // - continue
                     // - settings
                     // - quit
+
                     parent
                         .spawn((
                             ButtonBundle {
@@ -172,7 +173,7 @@ fn main_menu_setup(
                             MenuButtonAction::Continue,
                         ))
                         .with_children(|parent|{
-                            let icon = asset_server.load("textures/Game Icons/right.png");
+                            let icon = asset_server.load("textures/Game Icons/save.png");
                             parent.spawn(ImageBundle {
                                 style: button_icon_style.clone(),
                                 image: UiImage::new(icon),
@@ -220,7 +221,7 @@ fn main_menu_setup(
                                 image: UiImage::new(icon),
                                 ..default()
                             });
-                            parent.spawn(TextBundle::from_section("Quit", button_text_style));
+                            parent.spawn(TextBundle::from_section("Quit", button_text_style)); 
                         });
                 });
         });
@@ -235,7 +236,7 @@ struct SplashTimer(Timer);
 
 
 fn splash_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let icon = asset_server.load("gangsta_kirby.png");
+    let icon = asset_server.load("Textures/gangsta_kirby.png");
     // Display the logo
     commands
         .spawn((

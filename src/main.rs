@@ -9,7 +9,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         
         .insert_resource(resources::DisplayQuality::Medium)
-        .insert_resource(resources::Volume(50))
+        .insert_resource(resources::Volume(7))
 
         .add_systems(Startup, setup)
 

@@ -12,6 +12,7 @@ enum MainMenuState {
     Main,
     SettingMain,
     SettingsDisplay,
+    SettingsSound,
 }
 
 pub fn main_menu_plugin(app: &mut App) {
@@ -45,12 +46,24 @@ pub fn main_menu_plugin(app: &mut App) {
         .add_systems(
             OnExit(MainMenuState::SettingsDisplay),
             despawn_screen::<OnDisplaySettingsMenu>,
+        )
+
+        //sound
+        .add_systems(OnEnter(MainMenuState::SettingsSound), sound_settings_menu_setup)
+        .add_systems(
+            Update,
+            (setting_button::<Volume>.run_if(in_state(MainMenuState::SettingsSound)), 
+        ))
+        .add_systems(
+            OnExit(MainMenuState::SettingsSound),
+            despawn_screen::<OnSoundSettingsMenu>,
+        )
+
+        //systems common to all settings menus
+        .add_systems(
+            Update,
+            (menu_action, button_system).run_if(in_state(GameState::MainMenu))
         );
-
-
-
-
-
 
     }
 
@@ -160,6 +173,95 @@ fn settings_menu_setup(mut commands: Commands) {
                     }
                 });
         });
+}
+//Display and formatting for SettingsSound Menu
+fn sound_settings_menu_setup (mut commands: Commands, volume: Res<Volume>){
+    let button_style = Style {
+        width: Val::Px(200.0),
+        height: Val::Px(65.0),
+        margin: UiRect::all(Val::Px(20.0)),
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        ..default()
+    };
+    let button_text_style = TextStyle {
+        font_size: 40.0,
+        color: TEXT_COLOR,
+        ..default()
+    };
+
+    commands
+            .spawn((
+                NodeBundle {
+                    style: Style {
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        ..default()
+                    },
+                    ..default()
+                },
+                OnSoundSettingsMenu,
+            ))
+            .with_children(|parent| {
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        background_color: Color::CRIMSON.into(),
+                        ..default()
+                    })
+                    .with_children(|parent| {
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                background_color: Color::CRIMSON.into(),
+                                ..default()
+                            })
+                            .with_children(|parent| {
+                                parent.spawn(TextBundle::from_section(
+                                    "Volume",
+                                    button_text_style.clone(),
+                                ));
+                                for volume_setting in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] {
+                                    let mut entity = parent.spawn((
+                                        ButtonBundle {
+                                            style: Style {
+                                                width: Val::Px(30.0),
+                                                height: Val::Px(65.0),
+                                                ..button_style.clone()
+                                            },
+                                            background_color: NORMAL_BUTTON.into(),
+                                            ..default()
+                                        },
+                                        Volume(volume_setting),
+                                    ));
+                                    if *volume == Volume(volume_setting) {
+                                        entity.insert(SelectedOption);
+                                    }
+                                }
+                            });
+                        parent
+                            .spawn((
+                                ButtonBundle {
+                                    style: button_style,
+                                    background_color: NORMAL_BUTTON.into(),
+                                    ..default()
+                                },
+                                MenuButtonAction::BackToSettings,
+                            ))
+                            .with_children(|parent| {
+                                parent.spawn(TextBundle::from_section("Back", button_text_style));
+                            });
+                    });
+            });
 }
 //Display and formatting for DisplaySetting Menu
 fn display_settings_menu_setup(mut commands: Commands, display_quality: Res<DisplayQuality>) {
@@ -420,9 +522,64 @@ fn main_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>){
                             parent.spawn(TextBundle::from_section("Quit", button_text_style));
                         });
                 });
-        });
+        }); // 
     }
 
+fn menu_action(
+    interaction_query: Query<(&Interaction, &MenuButtonAction), (Changed<Interaction>, With<Button>)>,
+    mut app_exit_events: EventWriter<AppExit>,
+    mut menu_state: ResMut<NextState<MainMenuState>>,
+    mut game_state: ResMut<NextState<GameState>>,
+){
+    for (interaction, menu_button_action) in &interaction_query {
+        if *interaction == Interaction::Pressed {
+            match menu_button_action {
+                MenuButtonAction::Play => {
+                    game_state.set(GameState::Running);
+                    menu_state.set(MainMenuState::Main);
+                }
+                MenuButtonAction::Continue => {
+                    game_state.set(GameState::Running);
+                    menu_state.set(MainMenuState::Main);
+                }
+                MenuButtonAction::Settings => {
+                    menu_state.set(MainMenuState::SettingMain);
+                }
+                MenuButtonAction::SettingsDisplay => {
+                    menu_state.set(MainMenuState::SettingsDisplay);
+                }
+                MenuButtonAction::SettingsSound => {
+                    menu_state.set(MainMenuState::SettingsSound);
+                }
+                MenuButtonAction::BackToMainMenu => {
+                    menu_state.set(MainMenuState::Main);
+                }
+                MenuButtonAction::BackToSettings => {
+                    menu_state.set(MainMenuState::SettingMain);
+                }
+                MenuButtonAction::Quit => {
+                    app_exit_events.send(AppExit);
+                }
+            }
+        }
+    }
+}
+
+fn button_system(
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor, Option<&SelectedOption>),
+        (Changed<Interaction>, With<Button>),
+    >,
+){
+    for(interaction, mut color, selected) in &mut interaction_query {
+        *color = match (*interaction, selected) {
+            (Interaction::Pressed, _) | (Interaction::None, Some(_)) => PRESSED_BUTTON.into(),
+            (Interaction::Hovered, Some(_)) => HOVERED_PRESSED_BUTTON.into(),
+            (Interaction::Hovered, None) => HOVERED_BUTTON.into(),
+            (Interaction::None, None) => NORMAL_BUTTON.into(),
+        }
+    }
+}
 #[derive(Component)]
 struct OnSplashScreen;
 
@@ -478,7 +635,6 @@ fn splash_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Insert the timer as a resource
     commands.insert_resource(SplashTimer(Timer::from_seconds(2.0, TimerMode::Once)));
 }
-
 //this counts down and progresses the lifetime of the splash screen (2 seconds?)
 fn countdown(
     mut menu_state: ResMut<NextState<MainMenuState>>,

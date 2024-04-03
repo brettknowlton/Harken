@@ -1,13 +1,27 @@
-use bevy::prelude::*;
-mod menu;
+use bevy::{input::*, prelude::*};
 
 mod resources;
-
+mod menu;
+mod game;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        
+        .add_plugins(DefaultPlugins
+            .set(ImagePlugin::default_nearest())
+            .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Harken".into(),
+                        resolution: (1024.0, 768.0).into(),
+                        resizable: false,
+                        decorations: false,
+                        ..default()
+                    }),
+                    ..default()
+
+            })
+            .build(),
+        )
+
         .insert_resource(resources::DisplayQuality::Medium)
         .insert_resource(resources::Volume(7))
 
@@ -16,6 +30,8 @@ fn main() {
         .init_state::<resources::GameState>()
 
         .add_plugins(menu::main_menu_plugin)
+
+        .add_plugins(game::game_plugin)
         .run();
 
     println!("Hello, world!");

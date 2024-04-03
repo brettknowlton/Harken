@@ -13,6 +13,7 @@ enum MainMenuState {
     SettingMain,
     SettingsDisplay,
     SettingsSound,
+    Disabled,
 }
 
 pub fn main_menu_plugin(app: &mut App) {
@@ -536,7 +537,7 @@ fn menu_action(
             match menu_button_action {
                 MenuButtonAction::Play => {
                     game_state.set(GameState::Running);
-                    menu_state.set(MainMenuState::Main);
+                    menu_state.set(MainMenuState::Disabled);
                 }
                 MenuButtonAction::Continue => {
                     game_state.set(GameState::Running);
@@ -605,7 +606,7 @@ fn setting_button<T: Resource + Component + PartialEq + Copy>(
 }
 
 fn splash_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let icon = asset_server.load("gangsta_kirby.png");
+    let icon = asset_server.load("Textures/ham&bread.png");
     // Display the logo
     commands
         .spawn((
@@ -625,7 +626,7 @@ fn splash_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             parent.spawn(ImageBundle {
                 style: Style {
                     // This will set the logo to be 200px wide, and auto adjust its height
-                    width: Val::Px(200.0),
+                    width: Val::Px(800.0),
                     ..default()
                 },
                 image: UiImage::new(icon),
@@ -641,7 +642,7 @@ fn countdown(
     time: Res<Time>,
     mut timer: ResMut<SplashTimer>,
 ){
-    println!("Ticking Countdown");
+    //println!("Ticking Countdown");
     if timer.tick(time.delta()).finished() {
         menu_state.set(MainMenuState::Main);
     }

@@ -5,7 +5,7 @@ pub enum GameState {
     #[default]
     MainMenu,
     Running,
-    PauseMenu,
+    Dead,
 }
 
 #[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]

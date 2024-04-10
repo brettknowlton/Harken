@@ -17,16 +17,33 @@ pub fn game_plugin(app: &mut App) {
     .add_systems(Update,player_movement.run_if(in_state(InGameState::Running)));
 }
 
-//Component Used to ta
+//Component Used to tag the player
 #[derive(Component)]
 struct Player;
 
+//Component Used to tag a Static Object that does nothing
+#[derive(Component)]
+struct StaticObject;
 
 fn create_game_objects(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let texture = asset_server.load("Textures/Player/Player-Singlet.png");
+    let room_texture = asset_server.load("Textures/Rooms/Room-concept-01.png");
+    commands.spawn(
+        (SpriteBundle{
+            sprite: Sprite {
+                custom_size: Some(Vec2::new((96.0 * 11.0), (96.0 * 8.0))),
+                .. default()
+            },
+            texture: room_texture,
+            .. default()
+        },
+        StaticObject
+    )
+    );
+    
+    let player_texture = asset_server.load("Textures/Player/Player-Singlet.png");
 
     commands.spawn((
         SpriteBundle{
@@ -35,11 +52,13 @@ fn create_game_objects(
                 flip_x: false,
                 .. default()
             },
-            texture,
+            texture: player_texture,
             .. default()
         },
         Player
     ));
+
+    
 }
 
 fn player_movement(

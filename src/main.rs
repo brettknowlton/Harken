@@ -16,7 +16,7 @@ fn main() {
             .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Harken".into(),
-                        resolution: (1024.0, 768.0).into(),
+                        resolution: (1056.0, 768.0).into(),
                         resizable: false,
                         decorations: false,
                         visible: false,

@@ -31,6 +31,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgba(0.0, 0.0, 0.0, 0.0)))
         .insert_resource(resources::DisplayQuality::Medium,)
         .insert_resource( resources::Volume(7))
+        .insert_resource(resources::CurrentRoom(1, 1, 0))
 
         .add_systems(Startup, setup)
 
@@ -38,12 +39,14 @@ fn main() {
 
         .add_plugins(FrameTimeDiagnosticsPlugin,)
         .add_systems(Update, make_visible)
+
+
         .add_plugins(menu::main_menu_plugin)
 
         .add_plugins(game::game_plugin)
         .run();
 
-    println!("Hello, world!");
+    println!("Goodbye!");
 }
 
 fn setup(mut commands: Commands) {

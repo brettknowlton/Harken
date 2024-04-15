@@ -1,18 +1,28 @@
+use bevy::a11y::accesskit::Rect;
 use bevy::prelude::*;
 
-use super::{despawn_screen, resources::GameState, resources::DisplayQuality, resources::Volume};
+use std::path::Path;
+use std::fs::File;
+use std::io::{self, BufRead};
+
+use super::resources::*;
+
 
 #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
 enum InGameState {
     #[default]
+    Loading,
     Running,
-    Cutscene,
-    RoomChange
+    //Cutscene,
+    //RoomChange
 }
 
 
 pub fn game_plugin(app: &mut App) {
     app.init_state::<InGameState>()
+
+    .add_systems(OnEnter(InGameState::Loading), load_room)
+
     .add_systems(OnEnter(GameState::Running), create_game_objects)
     .add_systems(Update,player_movement.run_if(in_state(InGameState::Running)));
 }
@@ -82,4 +92,84 @@ fn player_movement(
             sprite.flip_x = true;
         }
     }
+}
+
+#[derive(Component)]
+enum ColliderType{
+    RIGID,
+    INTERACTABLE,
+    TRIGGER
+}
+
+#[derive(Component)]
+struct Collider {
+    rect: Rect,
+    style: ColliderType,
+}
+
+//Helper function for loading files
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where P: AsRef<Path>, {
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
+
+
+fn load_room(
+    commands: Commands,
+    server: Res<AssetServer>,
+    current_room: Res<CurrentRoom>
+){
+    let level = current_room.0;
+    let room = current_room.1;
+    let var = current_room.2;
+
+
+    let mut file_name = String::new();
+    
+    file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
+    println!("{}", file_name);
+
+    let mut i =0;
+    if let Ok(lines) = read_lines(file_name) {
+        // Consumes the iterator, returns an (Optional) String
+        for line in lines.flatten() {
+            //seems like for each line of this file we can create a new collider object
+            //lets parse out the important info first
+            i += 1;
+            if (i<=2) | ((i-2)%6 <= 0){
+                continue;
+            }
+            let x:i32;
+            let y:i32;
+            let w:i32;
+            let h:i32;
+
+            let pretty_line = line.trim();
+            let parts = pretty_line.split("\" ").collect::<Vec<_>>();
+
+            for part in parts{
+                //println!("{part}");
+                let comp = part.split("\"").collect::<Vec<_>>();
+                match comp.get(0){
+                    _ => println!("{:?}", comp.get(1)),
+                }
+                
+
+            //     if ch.is_digit(10) {
+            //         intBuilder =  format!("{:?}", intBuilder + &ch.to_string());
+            //     }
+            //     else if intBuilder.is_empty(){
+            //         intBuilder  = "".to_string();
+            //     }else{
+            //         println!("Built INT: {}", intBuilder);
+            //         intBuilder  = "".to_string();
+            //     }
+            }
+
+
+        }
+    }
+
+
 }

@@ -18,5 +18,10 @@ pub enum DisplayQuality {
 #[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
 pub struct Volume(pub u32);
 
+
+
 #[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
-pub struct CurrentLevel(pub u32);
+pub struct CurrentRoom(pub u32, pub u32, pub u32);
+//1st: Level Number
+//2nd: Room Id
+//3rd: Room Varation

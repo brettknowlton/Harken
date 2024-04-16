@@ -9,7 +9,7 @@ use std::io::{self, BufRead};
 use log::{warn, error, debug};
 
 
-use crate::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::{SCREEN_HEIGHT, SCREEN_WIDTH, PIXEL_SCALE};
 
 use super::resources::*;
 
@@ -27,6 +27,7 @@ pub fn game_plugin(app: &mut App) {
 #[derive(Component)]
 struct Player;
 
+
 //Component Used to tag a Static Object that does nothing
 #[derive(Component)]
 struct StaticObject;
@@ -39,7 +40,7 @@ fn create_game_objects(
     commands.spawn(
         (SpriteBundle{
             sprite: Sprite {
-                custom_size: Some(Vec2::new(96.0 * 11.0, 96.0 * 8.0)),
+                custom_size: Some(Vec2::new(PIXEL_SCALE * 11.0, PIXEL_SCALE * 8.0)),
                 .. default()
             },
             texture: room_texture,
@@ -189,6 +190,8 @@ fn load_room(
     mut commands: Commands,
     current_room: Res<CurrentRoom>,
     mut game_state: ResMut<NextState<GameState>>,
+
+    in_debug: Res<DebugMode>
 ){
     let level = current_room.0;
     let room = current_room.1;
@@ -260,7 +263,7 @@ fn load_room(
             count = 0;
             for item in ints{
                 
-                match count%4 {
+                match count % 4 {
                     0 =>{
                         x= item
                     },
@@ -309,20 +312,22 @@ fn load_room(
                     (Collider {
                         // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
                         transform: Transform { 
-                            translation: Vec3::new((x*96) as f32 - SCREEN_WIDTH/2.0 + 48.0, (y*96) as f32 - SCREEN_HEIGHT / 2.0 + 48.0, 1.0),
-                            scale: Vec3::new((w*96) as f32, (h*96) as f32, 0.0),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE)  - SCREEN_WIDTH/2.0 , (SCREEN_HEIGHT / 2.0) - (y as f32 * PIXEL_SCALE), in_debug.0 as i32 as f32),
+                            scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             .. default()
                         },
                         style: st
                     },
                     SpriteBundle{
                         transform: Transform { 
-                            translation: Vec3::new((x*96) as f32 - SCREEN_WIDTH/2.0 + 48.0, (y*96) as f32 - SCREEN_HEIGHT / 2.0 + 48.0, 1.0),
-                            scale: Vec3::new((w*96) as f32, (h*96) as f32, 1.0),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE)  - SCREEN_WIDTH/2.0 , (SCREEN_HEIGHT / 2.0) - ((y as f32 * PIXEL_SCALE)+ PIXEL_SCALE), in_debug.0 as i32 as f32),
+                            scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
+                            
                             .. default()
                         },
                         sprite: Sprite{
                             color: Color::hex(col).unwrap(),
+                            anchor: Anchor::BottomLeft,
                             ..default()
                         },
                         .. default()

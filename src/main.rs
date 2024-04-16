@@ -12,6 +12,8 @@ mod game;
 const SCREEN_WIDTH: f32 = 1056.0;
 const SCREEN_HEIGHT: f32 = 768.0;
 
+const PIXEL_SCALE: f32 = SCREEN_HEIGHT / 8.0;
+
 fn main() {
 
     App::new()
@@ -32,7 +34,7 @@ fn main() {
             .build(),
         )
 
-        .insert_resource(resources::DebugMode(true))
+        .insert_resource(resources::DebugMode(false))
 
         .insert_resource(ClearColor(Color::rgba(0.0, 0.0, 0.0, 0.0)))
         .insert_resource(resources::DisplayQuality::Medium,)

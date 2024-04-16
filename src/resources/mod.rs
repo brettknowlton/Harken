@@ -4,6 +4,7 @@ use bevy::prelude::*;
 pub enum GameState {
     #[default]
     MainMenu,
+    Loading,
     Running,
     Dead,
 }
@@ -25,3 +26,7 @@ pub struct CurrentRoom(pub u32, pub u32, pub u32);
 //1st: Level Number
 //2nd: Room Id
 //3rd: Room Varation
+
+
+#[derive(Resource)]
+pub struct DebugMode(pub bool);

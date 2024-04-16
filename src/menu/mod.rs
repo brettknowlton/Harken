@@ -708,14 +708,14 @@ fn menu_action(
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 MenuButtonAction::Play => {
-                    game_state.set(GameState::Running);
+                    game_state.set(GameState::Loading);
                     menu_state.set(MainMenuState::Disabled);
                     current_room.0 = 1;
                     current_room.1 = 1;
                 }
                 MenuButtonAction::Continue => {
-                    game_state.set(GameState::Running);
-                    menu_state.set(MainMenuState::Main);
+                    game_state.set(GameState::Loading);
+                    menu_state.set(MainMenuState::Disabled);
                 }
                 MenuButtonAction::Settings => {
                     menu_state.set(MainMenuState::SettingMain);

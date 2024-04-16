@@ -9,16 +9,20 @@ mod resources;
 mod menu;
 mod game;
 
+const SCREEN_WIDTH: f32 = 1056.0;
+const SCREEN_HEIGHT: f32 = 768.0;
+
 fn main() {
+
     App::new()
         .add_plugins(DefaultPlugins
             .set(ImagePlugin::default_nearest())
             .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Harken".into(),
-                        resolution: (1056.0, 768.0).into(),
+                        resolution: (SCREEN_WIDTH, SCREEN_HEIGHT).into(),
                         resizable: false,
-                        decorations: false,
+                        decorations: true,
                         visible: false,
                         ..default()
                     }),
@@ -28,9 +32,11 @@ fn main() {
             .build(),
         )
 
+        .insert_resource(resources::DebugMode(true))
+
         .insert_resource(ClearColor(Color::rgba(0.0, 0.0, 0.0, 0.0)))
         .insert_resource(resources::DisplayQuality::Medium,)
-        .insert_resource( resources::Volume(7))
+        .insert_resource(resources::Volume(7))
         .insert_resource(resources::CurrentRoom(1, 1, 0))
 
         .add_systems(Startup, setup)

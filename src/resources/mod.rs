@@ -9,6 +9,7 @@ pub enum GameState {
     Dead,
 }
 
+
 #[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
 pub enum DisplayQuality {
     Low,

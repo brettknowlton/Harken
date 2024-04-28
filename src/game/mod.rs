@@ -19,8 +19,7 @@ pub fn game_plugin(app: &mut App) {
     .add_systems(OnEnter(GameState::Loading), load_room)
     .add_systems(OnEnter(GameState::Running), create_game_objects)
 
-    .add_systems(Update,player_movement.run_if(in_state(GameState::Running)))
-    .add_systems(Update,do_collisions.run_if(in_state(GameState::Running)));
+    .add_systems(Update,player_movement.run_if(in_state(GameState::Running)));
 }
 
 //Component Used to tag the player
@@ -55,7 +54,7 @@ fn create_game_objects(
     commands.spawn((
         SpriteBundle{
             sprite: Sprite {
-                custom_size: Some(Vec2::new(96.0, 96.0)),
+                custom_size: Some(Vec2::new(30.0, 96.0)),
                 flip_x: false,
                 anchor: Anchor::BottomLeft,
                 .. default()
@@ -72,6 +71,7 @@ fn create_game_objects(
 
 fn player_movement(
     mut players: Query<(&mut Transform, &Player, &mut Sprite)>,
+    mut colliders: Query<&Collider>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>
 ) {
@@ -91,25 +91,24 @@ fn player_movement(
             sprite.flip_x = true;
         }
         
-        println!("Transform: x:{} , y:{}",transform.translation.x, transform.translation.y);
+        // println!("Transform: x:{} , y:{}",transform.translation.x, transform.translation.y);
 
     }
 
-}
 
-fn do_collisions(
-    mut players: Query<(&mut Transform, &Player, &mut Sprite)>,
-    mut colliders: Query<&Collider>
-){
+    //CODE FOR COLLIDERS::
+
     for (mut player_transform, _, _) in &mut players{
 
-        //create a containing the current location of the player
-        let p_left: f64 = player_transform.translation.x.into();
-        let px_scale: f64 = player_transform.scale.x.into();
+        //create a rect containing the current location of the player
+        
+        let px_scale: f64 = player_transform.scale.x as f64;
+        let p_left: f64 = player_transform.translation.x as f64;
         let p_right: f64 = p_left + px_scale;
 
-        let p_bot: f64 = player_transform.translation.y.into();
-        let py_scale: f64 = player_transform.scale.y.into();
+        
+        let p_bot: f64 = player_transform.translation.y as f64;
+        let py_scale: f64 = player_transform.scale.y as f64;
         let p_top: f64 = p_bot + py_scale;
 
         let p_rect = Rect::new(p_left, p_bot, p_right, p_top);
@@ -118,40 +117,41 @@ fn do_collisions(
         for collider in &mut colliders{
             //we need to check if the player is inside this collider, if so we need to push them outside of it
             
-            //create rect to test against the player rect
-            let c_left: f64 = collider.transform.translation.x.into();
-            let cx_scale: f64 = player_transform.scale.x.into();
-            let c_right: f64 = p_left + cx_scale;
+            //create a rect to test against the player rect
+            let cx_scale: f64 = collider.transform.scale.x as f64;
+            let c_left: f64 = collider.transform.translation.x as f64;
+            let c_right: f64 = collider.transform.translation.x as f64 + cx_scale;
 
-            let c_bot: f64 = player_transform.translation.y.into();
-            let cy_scale: f64 = player_transform.scale.y.into();
-            let c_top: f64 = p_bot + cy_scale;
+            let c_bot: f64 = collider.transform.translation.y as f64;
+            let cy_scale: f64 = collider.transform.scale.y as f64;
+            let c_top: f64 = p_bot - cy_scale;
 
             let c_rect = Rect::new(c_left, c_bot, c_right, c_top);
 
             
             if p_rect.intersect(c_rect).area() != 0.0{
 
-                // println!("INTERSECTION DETECTED!");
+                
                 if collider.style == ColliderType::RIGID{
+                    println!("INTERSECTION DETECTED!");
                     let intersection = p_rect.intersect(c_rect);
 
                             if intersection.width() < intersection.height() {
                                 
-                                if p_left < c_rect.min_x() {
+                                if p_rect.min_x() < c_rect.min_x() {
                                     player_transform.translation.x -= intersection.width() as f32;
-                                    // println!("type 1");
-                                } else {
+                                    println!("type 1");
+                                } else if p_rect.max_x() > c_rect.max_x(){
                                     player_transform.translation.x += intersection.width() as f32;
-                                    // println!("type 2");
+                                    println!("type 2");
                                 }
-                            } else {
-                                if p_bot < c_rect.min_y() {
+                            } else if intersection.width() > intersection.height(){
+                                if p_rect.min_y() < c_rect.min_y() {
                                     player_transform.translation.y -= intersection.height() as f32;
-                                    // println!("type 3");
-                                } else {
+                                    println!("type 3");
+                                } else if p_rect.max_y() > c_rect.max_y(){
                                     player_transform.translation.y += intersection.height() as f32;
-                                    // println!("type 4");
+                                     println!("type 4");
                                 }
                             }
                 }
@@ -159,11 +159,9 @@ fn do_collisions(
     
         }
     }
-    
-
-
 
 }
+    
 
 #[derive(Component, PartialEq, Debug)]
 enum ColliderType{
@@ -201,7 +199,7 @@ fn load_room(
     let mut file_name = String::new();
     
     file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
-    debug!("{}", file_name);
+    warn!("{}", file_name);
 
     let mut i =0;
     if let Ok(lines) = read_lines(file_name) {
@@ -306,7 +304,7 @@ fn load_room(
             col = col.split("#").collect::<Vec<_>>()[1];
             println!("COLOR FOUND: {}", col);
 
-            println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x*96) as f32 - SCREEN_WIDTH/2.0), (SCREEN_HEIGHT + (y*96) as f32), w*96, h*96, st);
+            println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x*96) as f32 - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y*96) as f32), w*96, h*96, st);
 
                 commands.spawn(
                     (Collider {

@@ -34,12 +34,12 @@ fn main() {
             .build(),
         )
 
-        .insert_resource(resources::DebugMode(false))
+        .insert_resource(resources::DebugMode(true))
 
         .insert_resource(ClearColor(Color::rgba(0.0, 0.0, 0.0, 0.0)))
         .insert_resource(resources::DisplayQuality::Medium,)
         .insert_resource(resources::Volume(7))
-        .insert_resource(resources::CurrentRoom(1, 1, 0))
+        .insert_resource(resources::CurrentRoom(1, 0, 0))
 
         .add_systems(Startup, setup)
 

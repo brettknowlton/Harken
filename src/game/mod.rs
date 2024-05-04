@@ -37,7 +37,11 @@ fn create_game_objects(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let room_texture = asset_server.load("Textures\\Rooms\\Room-concept-01.png");
+    let room_texture = asset_server.load("Textures/Rooms/Room-concept-01.png");
+    #[cfg(target_os = "Windows")]{
+        room_texture = asset_server.load("Textures\\Rooms\\Room-concept-01.png");
+    }
+
     commands.spawn(
         (SpriteBundle{
             sprite: Sprite {
@@ -50,8 +54,11 @@ fn create_game_objects(
         StaticObject
     )
     );
-    
-    let player_texture = asset_server.load("Textures\\Player\\Player-Singlet.png");
+
+    let player_texture = asset_server.load("Textures/Player/Player-Singlet.png");
+    #[cfg(target_os ="Windows")]{
+        let player_texture = asset_server.load("Textures\\Player\\Player-Singlet.png");
+    }
 
     commands.spawn((
         SpriteBundle{
@@ -201,7 +208,7 @@ fn load_room(
 
 
     // let mut file_name = String::new();
-    
+    todo!("CFG HERE");
     let file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
     warn!("{}", file_name);
 

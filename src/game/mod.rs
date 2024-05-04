@@ -5,6 +5,8 @@ use bevy::sprite::Anchor;
 use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::thread::sleep;
+use std::time::{self, Duration};
 
 use log::{warn, error, debug};
 
@@ -35,7 +37,7 @@ fn create_game_objects(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let room_texture = asset_server.load("Textures/Rooms/Room-concept-01.png");
+    let room_texture = asset_server.load("Textures\\Rooms\\Room-concept-01.png");
     commands.spawn(
         (SpriteBundle{
             sprite: Sprite {
@@ -49,18 +51,18 @@ fn create_game_objects(
     )
     );
     
-    let player_texture = asset_server.load("Textures/Player/Player-Singlet.png");
+    let player_texture = asset_server.load("Textures\\Player\\Player-Singlet.png");
 
     commands.spawn((
         SpriteBundle{
             sprite: Sprite {
-                custom_size: Some(Vec2::new(30.0, 96.0)),
+                custom_size: Some(Vec2::new(1.0, 1.0)),
                 flip_x: false,
                 anchor: Anchor::BottomLeft,
                 .. default()
             },
             texture: player_texture,
-            
+            transform: Transform { scale: Vec3{ x: 30.0, y: 96.0, z: 0.0 }, ..Default::default()},
             .. default()
         },
         Player,
@@ -95,6 +97,7 @@ fn player_movement(
 
     }
 
+    let duration = Duration::from_millis(200);
 
     //CODE FOR COLLIDERS::
 
@@ -116,44 +119,45 @@ fn player_movement(
 
         for collider in &mut colliders{
             //we need to check if the player is inside this collider, if so we need to push them outside of it
-            
+
             //create a rect to test against the player rect
             let cx_scale: f64 = collider.transform.scale.x as f64;
             let c_left: f64 = collider.transform.translation.x as f64;
             let c_right: f64 = collider.transform.translation.x as f64 + cx_scale;
 
-            let c_bot: f64 = collider.transform.translation.y as f64;
+            let c_top: f64 = collider.transform.translation.y as f64;
             let cy_scale: f64 = collider.transform.scale.y as f64;
-            let c_top: f64 = p_bot - cy_scale;
+            let c_bot: f64 = collider.transform.translation.y as f64 - cy_scale;
 
             let c_rect = Rect::new(c_left, c_bot, c_right, c_top);
 
-            
+            debug!("c_rect: {c_rect:?}");
+            debug!("p_rect: {p_rect:?}");
+                        
             if p_rect.intersect(c_rect).area() != 0.0{
-
                 
                 if collider.style == ColliderType::RIGID{
                     println!("INTERSECTION DETECTED!");
                     let intersection = p_rect.intersect(c_rect);
 
-                            if intersection.width() < intersection.height() {
-                                
-                                if p_rect.min_x() < c_rect.min_x() {
-                                    player_transform.translation.x -= intersection.width() as f32;
-                                    println!("type 1");
-                                } else if p_rect.max_x() > c_rect.max_x(){
-                                    player_transform.translation.x += intersection.width() as f32;
-                                    println!("type 2");
-                                }
-                            } else if intersection.width() > intersection.height(){
-                                if p_rect.min_y() < c_rect.min_y() {
-                                    player_transform.translation.y -= intersection.height() as f32;
-                                    println!("type 3");
-                                } else if p_rect.max_y() > c_rect.max_y(){
-                                    player_transform.translation.y += intersection.height() as f32;
-                                     println!("type 4");
-                                }
-                            }
+                    if intersection.width() < intersection.height() {
+                        
+                        if p_rect.min_x() < c_rect.min_x() {
+                            player_transform.translation.x -= intersection.width() as f32;
+                            println!("type 1");
+                        } else if p_rect.max_x() > c_rect.max_x(){
+                            player_transform.translation.x += intersection.width() as f32;
+                            println!("type 2");
+                        }
+                    } else if intersection.width() > intersection.height(){
+                        if p_rect.min_y() < c_rect.min_y() {
+                            player_transform.translation.y -= intersection.height() as f32;
+                            println!("type 3");
+                        } else if p_rect.max_y() > c_rect.max_y(){
+                            player_transform.translation.y += intersection.height() as f32;
+                                println!("type 4");
+                        }
+                    }
                 }
             }
     
@@ -196,9 +200,9 @@ fn load_room(
     let var = current_room.2;
 
 
-    let mut file_name = String::new();
+    // let mut file_name = String::new();
     
-    file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
+    let file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
     warn!("{}", file_name);
 
     let mut i =0;

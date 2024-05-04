@@ -5,8 +5,6 @@ use bevy::sprite::Anchor;
 use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::thread::sleep;
-use std::time::{self, Duration};
 
 use log::{warn, error, debug};
 
@@ -21,7 +19,8 @@ pub fn game_plugin(app: &mut App) {
     .add_systems(OnEnter(GameState::Loading), load_room)
     .add_systems(OnEnter(GameState::Running), create_game_objects)
 
-    .add_systems(Update,player_movement.run_if(in_state(GameState::Running)));
+    .add_systems(Update,player_movement.run_if(in_state(GameState::Running)))
+    .add_systems(Update, move_camera.run_if(in_state(GameState::Running)));
 }
 
 //Component Used to tag the player
@@ -32,6 +31,19 @@ struct Player;
 //Component Used to tag a Static Object that does nothing
 #[derive(Component)]
 struct StaticObject;
+
+
+fn move_camera(
+    mut camera: Query<&mut Transform, (With<Camera>, Without<Player>)>,
+    player: Query<&mut Transform, With<Player>>
+){
+    //move camera to be centered on player
+    //player's sprite is anchored to the bottom left
+    for player_transform in &mut player.iter() {
+        let mut camera_transform = camera.single_mut();
+        camera_transform.translation = player_transform.translation;
+    }
+}
 
 fn create_game_objects(
     mut commands: Commands,
@@ -104,8 +116,6 @@ fn player_movement(
 
     }
 
-    let duration = Duration::from_millis(200);
-
     //CODE FOR COLLIDERS::
 
     for (mut player_transform, _, _) in &mut players{
@@ -144,25 +154,21 @@ fn player_movement(
             if p_rect.intersect(c_rect).area() != 0.0{
                 
                 if collider.style == ColliderType::RIGID{
-                    println!("INTERSECTION DETECTED!");
+                    debug!("INTERSECTION DETECTED!");
                     let intersection = p_rect.intersect(c_rect);
 
                     if intersection.width() < intersection.height() {
                         
                         if p_rect.min_x() < c_rect.min_x() {
                             player_transform.translation.x -= intersection.width() as f32;
-                            println!("type 1");
                         } else if p_rect.max_x() > c_rect.max_x(){
                             player_transform.translation.x += intersection.width() as f32;
-                            println!("type 2");
                         }
                     } else if intersection.width() > intersection.height(){
                         if p_rect.min_y() < c_rect.min_y() {
                             player_transform.translation.y -= intersection.height() as f32;
-                            println!("type 3");
                         } else if p_rect.max_y() > c_rect.max_y(){
                             player_transform.translation.y += intersection.height() as f32;
-                                println!("type 4");
                         }
                     }
                 }
@@ -317,7 +323,7 @@ fn load_room(
             col = col.split("#").collect::<Vec<_>>()[1];
             println!("COLOR FOUND: {}", col);
 
-            println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x*96) as f32 - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y*96) as f32), w*96, h*96, st);
+            println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x*48) as f32 - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y*48) as f32), w*96, h*96, st);
 
                 commands.spawn(
                     (Collider {

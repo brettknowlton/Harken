@@ -207,9 +207,11 @@ fn load_room(
     let var = current_room.2;
 
 
-    // let mut file_name = String::new();
-    todo!("CFG HERE");
-    let file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
+    let file_name = format!("assets/Maps/Room-col{}{}{}.svg", level, room, var).to_string();
+    #[cfg(target_os = "Windows")]{
+    file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
+    }
+
     warn!("{}", file_name);
 
     let mut i =0;

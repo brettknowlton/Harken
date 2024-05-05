@@ -12,7 +12,7 @@ mod game;
 const SCREEN_WIDTH: f32 = 1056.0;
 const SCREEN_HEIGHT: f32 = 768.0;
 
-const PIXEL_SCALE: f32 = SCREEN_HEIGHT / 8.0;
+const PIXEL_SCALE: f32 = SCREEN_HEIGHT / 16.0;
 
 fn main() {
 

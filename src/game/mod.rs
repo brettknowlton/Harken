@@ -49,17 +49,18 @@ fn create_game_objects(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let room_texture = asset_server.load("Textures/Rooms/Room-concept-01.png");
+    let room_texture = asset_server.load("Textures/Rooms/Room-110.png");
     #[cfg(target_os = "Windows")]{
-        room_texture = asset_server.load("Textures\\Rooms\\Room-concept-01.png");
+        room_texture = asset_server.load("Textures\\Rooms\\Room-110.png");
     }
 
     commands.spawn(
         (SpriteBundle{
             sprite: Sprite {
-                custom_size: Some(Vec2::new(PIXEL_SCALE * 11.0, PIXEL_SCALE * 8.0)),
+                custom_size: Some(Vec2::new(1.0, 1.0)),
                 .. default()
             },
+            transform: Transform{ scale: Vec3::new(PIXEL_SCALE * 16.0, PIXEL_SCALE * 15.0, 1.0), ..default()},
             texture: room_texture,
             .. default()
         },
@@ -323,13 +324,13 @@ fn load_room(
             col = col.split("#").collect::<Vec<_>>()[1];
             println!("COLOR FOUND: {}", col);
 
-            println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x*48) as f32 - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y*48) as f32), w*96, h*96, st);
+            println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
 
                 commands.spawn(
                     (Collider {
                         // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
                         transform: Transform { 
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE)  - SCREEN_WIDTH/2.0 , (SCREEN_HEIGHT / 2.0) - (y as f32 * PIXEL_SCALE), in_debug.0 as i32 as f32),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             .. default()
                         },
@@ -337,14 +338,14 @@ fn load_room(
                     },
                     SpriteBundle{
                         transform: Transform { 
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE)  - SCREEN_WIDTH/2.0 , (SCREEN_HEIGHT / 2.0) - ((y as f32 * PIXEL_SCALE)+ PIXEL_SCALE), in_debug.0 as i32 as f32),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             
                             .. default()
                         },
                         sprite: Sprite{
                             color: Color::hex(col).unwrap(),
-                            anchor: Anchor::BottomLeft,
+                            anchor: Anchor::TopLeft,
                             ..default()
                         },
                         .. default()

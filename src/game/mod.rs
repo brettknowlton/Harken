@@ -23,9 +23,12 @@ pub fn game_plugin(app: &mut App) {
     .add_systems(Update, move_camera.run_if(in_state(GameState::Running)));
 }
 
-//Component Used to tag the player
+//Component Used to tag the player and give it velocity
 #[derive(Component)]
-struct Player;
+struct Player{
+    vel_x: f32,
+    vel_y: f32
+}
 
 
 //Component Used to tag a Static Object that does nothing
@@ -85,33 +88,43 @@ fn create_game_objects(
             transform: Transform { scale: Vec3{ x: 30.0, y: 96.0, z: 0.0 }, ..Default::default()},
             .. default()
         },
-        Player,
+        Player{
+            vel_x: 0.0,
+            vel_y: 0.0
+        },
     ));
 
     
 }
 
 fn player_movement(
-    mut players: Query<(&mut Transform, &Player, &mut Sprite)>,
+    mut players: Query<(&mut Transform, &mut Player, &mut Sprite)>,
     mut colliders: Query<&Collider>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>
 ) {
-    for (mut transform, _, mut sprite) in &mut players {
-        if input.pressed(KeyCode::ArrowUp) {
-            transform.translation.y += 150.0 * time.delta_seconds();
+    for (mut transform, mut player, mut sprite) in &mut players {
+        if input.pressed(KeyCode::ArrowUp) && !input.pressed(KeyCode::ArrowDown) {
+            player.vel_y = 150.0;
         }
-        if input.pressed(KeyCode::ArrowDown) {
-            transform.translation.y -= 150.0 * time.delta_seconds();
+        if input.pressed(KeyCode::ArrowDown) && !input.pressed(KeyCode::ArrowUp) {
+            player.vel_y = -150.0;
         }
-        if input.pressed(KeyCode::ArrowRight) {
-            transform.translation.x += 150.0 * time.delta_seconds();
+        if input.pressed(KeyCode::ArrowRight) && !input.pressed(KeyCode::ArrowLeft) {
+            player.vel_x = 150.0;
             sprite.flip_x = false;
         }
-        if input.pressed(KeyCode::ArrowLeft) {
-            transform.translation.x -= 150.0 * time.delta_seconds();
+        if input.pressed(KeyCode::ArrowLeft) && !input.pressed(KeyCode::ArrowRight) {
+            player.vel_x = -150.0;
             sprite.flip_x = true;
         }
+
+        transform.translation.y += player.vel_y * time.delta_seconds();
+        transform.translation.x += player.vel_x * time.delta_seconds();
+
+        player.vel_y = player.vel_y * 0.99 as i32 as f32;
+        player.vel_x = player.vel_x * 0.99 as i32 as f32;
+        
         
         // println!("Transform: x:{} , y:{}",transform.translation.x, transform.translation.y);
 
@@ -161,15 +174,15 @@ fn player_movement(
                     if intersection.width() < intersection.height() {
                         
                         if p_rect.min_x() < c_rect.min_x() {
-                            player_transform.translation.x -= intersection.width() as f32;
+                            player_transform.translation.x = c_rect.min_x() as f32 - player_transform.scale.x;
                         } else if p_rect.max_x() > c_rect.max_x(){
-                            player_transform.translation.x += intersection.width() as f32;
+                            player_transform.translation.x = c_rect.max_x() as f32;
                         }
                     } else if intersection.width() > intersection.height(){
                         if p_rect.min_y() < c_rect.min_y() {
-                            player_transform.translation.y -= intersection.height() as f32;
+                            player_transform.translation.y = c_rect.min_y() as f32 - player_transform.scale.y;
                         } else if p_rect.max_y() > c_rect.max_y(){
-                            player_transform.translation.y += intersection.height() as f32;
+                            player_transform.translation.y = c_rect.max_y() as f32;
                         }
                     }
                 }
@@ -324,13 +337,13 @@ fn load_room(
             col = col.split("#").collect::<Vec<_>>()[1];
             println!("COLOR FOUND: {}", col);
 
-            println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
+            // println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
 
                 commands.spawn(
                     (Collider {
                         // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
                         transform: Transform { 
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE / 2.0) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             .. default()
                         },
@@ -338,7 +351,7 @@ fn load_room(
                     },
                     SpriteBundle{
                         transform: Transform { 
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE / 2.0) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             
                             .. default()

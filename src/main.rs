@@ -34,7 +34,7 @@ fn main() {
             .build(),
         )
 
-        .insert_resource(resources::DebugMode(true))
+        .insert_resource(resources::DebugMode(false))
 
         .insert_resource(ClearColor(Color::rgba(0.0, 0.0, 0.0, 0.0)))
         .insert_resource(resources::DisplayQuality::Medium,)

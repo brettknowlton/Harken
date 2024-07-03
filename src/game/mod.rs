@@ -142,7 +142,7 @@ fn player_movement(
 
         
         let p_bot: f64 = player_transform.translation.y as f64;
-        let py_scale: f64 = player_transform.scale.y as f64;
+        let py_scale: f64 = player_transform.scale.y as f64 * 0.2;
         let p_top: f64 = p_bot + py_scale;
 
         let p_rect = Rect::new(p_left, p_bot, p_right, p_top);
@@ -152,13 +152,15 @@ fn player_movement(
             //we need to check if the player is inside this collider, if so we need to push them outside of it
 
             //create a rect to test against the player rect
-            let cx_scale: f64 = collider.transform.scale.x as f64;
-            let c_left: f64 = collider.transform.translation.x as f64;
-            let c_right: f64 = collider.transform.translation.x as f64 + cx_scale;
+            let cx_scale: f64 = collider.transform.scale.x as f64;//size of collider
+            let c_left: f64 = collider.transform.translation.x as f64;//left side of collider on x
+            let c_right: f64 = collider.transform.translation.x as f64 + cx_scale;//right side of collider calculated from left side and size
 
-            let c_top: f64 = collider.transform.translation.y as f64;
-            let cy_scale: f64 = collider.transform.scale.y as f64;
-            let c_bot: f64 = collider.transform.translation.y as f64 - cy_scale;
+            let c_top: f64 = collider.transform.translation.y as f64;//top of collider
+            let cy_scale: f64 = collider.transform.scale.y as f64;//size of collider on y
+            let  c_bot: f64 = collider.transform.translation.y as f64 - cy_scale;//bottom of collider calculated from top and size
+
+            
 
             let c_rect = Rect::new(c_left, c_bot, c_right, c_top);
 
@@ -174,20 +176,19 @@ fn player_movement(
                     if intersection.width() < intersection.height() {
                         
                         if p_rect.min_x() < c_rect.min_x() {
-                            player_transform.translation.x = c_rect.min_x() as f32 - player_transform.scale.x;
+                            player_transform.translation.x = c_rect.min_x() as f32 - px_scale as f32;
                         } else if p_rect.max_x() > c_rect.max_x(){
                             player_transform.translation.x = c_rect.max_x() as f32;
                         }
                     } else if intersection.width() > intersection.height(){
                         if p_rect.min_y() < c_rect.min_y() {
-                            player_transform.translation.y = c_rect.min_y() as f32 - player_transform.scale.y;
+                            player_transform.translation.y = c_rect.min_y() as f32 - py_scale as f32;
                         } else if p_rect.max_y() > c_rect.max_y(){
                             player_transform.translation.y = c_rect.max_y() as f32;
                         }
                     }
                 }
             }
-    
         }
     }
 
@@ -343,7 +344,7 @@ fn load_room(
                     (Collider {
                         // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
                         transform: Transform { 
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE / 2.0) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE), in_debug.0 as i32 as f32),
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             .. default()
                         },
@@ -351,7 +352,7 @@ fn load_room(
                     },
                     SpriteBundle{
                         transform: Transform { 
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + PIXEL_SCALE / 2.0) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
+                            translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE), in_debug.0 as i32 as f32),
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             
                             .. default()

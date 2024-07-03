@@ -711,7 +711,7 @@ fn menu_action(
                     game_state.set(GameState::Loading);
                     menu_state.set(MainMenuState::Disabled);
                     current_room.0 = 1;
-                    current_room.1 = 1;
+                    current_room.1 = 0;
                 }
                 MenuButtonAction::Continue => {
                     game_state.set(GameState::Loading);

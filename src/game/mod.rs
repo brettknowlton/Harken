@@ -142,11 +142,7 @@ fn player_movement(
 
         
         let p_bot: f64 = player_transform.translation.y as f64;
-<<<<<<< HEAD
         let py_scale: f64 = player_transform.scale.y as f64 * 0.2;
-=======
-        let py_scale: f64 = (PIXEL_SCALE * 0.125) as f64;
->>>>>>> 2aede68390723d489bd6c3969162cd04ef97e1ad
         let p_top: f64 = p_bot + py_scale;
 
         let p_rect = Rect::new(p_left, p_bot, p_right, p_top);
@@ -156,7 +152,6 @@ fn player_movement(
             //we need to check if the player is inside this collider, if so we need to push them outside of it
 
             //create a rect to test against the player rect
-<<<<<<< HEAD
             let cx_scale: f64 = collider.transform.scale.x as f64;//size of collider
             let c_left: f64 = collider.transform.translation.x as f64;//left side of collider on x
             let c_right: f64 = collider.transform.translation.x as f64 + cx_scale;//right side of collider calculated from left side and size
@@ -166,15 +161,6 @@ fn player_movement(
             let  c_bot: f64 = collider.transform.translation.y as f64 - cy_scale;//bottom of collider calculated from top and size
 
             
-=======
-            let cx_scale: f64 = collider.transform.scale.x as f64;
-            let c_left: f64 = collider.transform.translation.x as f64;
-            let c_right: f64 = c_left + cx_scale;
-
-            let c_top: f64 = collider.transform.translation.y as f64;
-            let cy_scale: f64 = collider.transform.scale.y as f64;
-            let c_bot: f64 = c_top as f64 - cy_scale;
->>>>>>> 2aede68390723d489bd6c3969162cd04ef97e1ad
 
             let c_rect = Rect::new(c_left, c_bot, c_right, c_top);
 
@@ -358,11 +344,7 @@ fn load_room(
                     (Collider {
                         // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
                         transform: Transform { 
-<<<<<<< HEAD
                             translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE), in_debug.0 as i32 as f32),
-=======
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE) - (9.0 * PIXEL_SCALE),  (4.5 * PIXEL_SCALE) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
->>>>>>> 2aede68390723d489bd6c3969162cd04ef97e1ad
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             .. default()
                         },
@@ -370,11 +352,7 @@ fn load_room(
                     },
                     SpriteBundle{
                         transform: Transform { 
-<<<<<<< HEAD
                             translation: Vec3::new((x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH/2.0), (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE), in_debug.0 as i32 as f32),
-=======
-                            translation: Vec3::new((x as f32 * PIXEL_SCALE) - (9.0 * PIXEL_SCALE),  (4.5 * PIXEL_SCALE) - (y as f32 * PIXEL_SCALE) , in_debug.0 as i32 as f32),
->>>>>>> 2aede68390723d489bd6c3969162cd04ef97e1ad
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             
                             .. default()

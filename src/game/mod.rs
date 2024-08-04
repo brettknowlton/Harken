@@ -1,4 +1,5 @@
 use bevy::a11y::accesskit::Rect;
+use bevy::math::vec2;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 
@@ -9,7 +10,7 @@ use std::io::{self, BufRead};
 use log::{warn, debug};
 
 
-use crate::{is_in_windows, PIXEL_SCALE};
+use crate::{is_in_windows, PIXEL_SCALE, SCREEN_HEIGHT, SCREEN_WIDTH};
 
 use super::resources::*;
 
@@ -17,9 +18,10 @@ use super::resources::*;
 pub fn game_plugin(app: &mut App) {
     app
     .add_systems(OnEnter(GameState::Loading), load_room)
-    .add_systems(OnEnter(GameState::Running), create_game_objects)
+    .add_systems(OnEnter(GameState::Running), (create_game_objects, display_room))
 
     .add_systems(Update,player_movement.run_if(in_state(GameState::Running)))
+    .add_systems(Update, collision_detection.run_if(in_state(GameState::Running)))
     .add_systems(Update, move_camera.run_if(in_state(GameState::Running)));
 }
 
@@ -52,32 +54,11 @@ fn create_game_objects(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let mut room_texture: Handle<Image> = asset_server.load("Textures/Rooms/Room-110.png");
-    if is_in_windows(){
-        room_texture = asset_server.load("Textures\\Rooms\\Room-110.png");
-    }
-
-    commands.spawn(
-        (SpriteBundle{
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(1.0, 1.0)),
-                .. default()
-            },
-            transform: Transform{ scale: Vec3::new(PIXEL_SCALE * 16.0, PIXEL_SCALE * 15.0, 1.0), ..default()},
-            texture: room_texture,
-            .. default()
-        },
-            StaticObject
-        )
-    );
-
     let mut player_texture: Handle<Image> = asset_server.load("Textures\\Player\\Player-Singlet.png");
 
     if !is_in_windows() {
         player_texture = asset_server.load("Textures/Player/Player-Singlet.png");
     }
-        
-
     commands.spawn((
         SpriteBundle{
             sprite: Sprite {
@@ -95,46 +76,35 @@ fn create_game_objects(
             vel_y: 0.0
         },
     ));
-
-    
 }
 
-fn player_movement(
-    mut players: Query<(&mut Transform, &mut Player, &mut Sprite)>,
-    mut colliders: Query<&Collider>,
-    input: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>
-) {
-    for (mut transform, mut player, mut sprite) in &mut players {
-        if input.pressed(KeyCode::ArrowUp) && !input.pressed(KeyCode::ArrowDown) {
-            player.vel_y = 120.0;
-        }
-        if input.pressed(KeyCode::ArrowDown) && !input.pressed(KeyCode::ArrowUp) {
-            player.vel_y = -120.0;
-        }
-        if input.pressed(KeyCode::ArrowRight) && !input.pressed(KeyCode::ArrowLeft) {
-            player.vel_x = 150.0;
-            sprite.flip_x = false;
-        }
-        if input.pressed(KeyCode::ArrowLeft) && !input.pressed(KeyCode::ArrowRight) {
-            player.vel_x = -150.0;
-            sprite.flip_x = true;
-        }
-
-        transform.translation.y += player.vel_y * time.delta_seconds();
-        transform.translation.x += player.vel_x * time.delta_seconds();
-
-        player.vel_y = player.vel_y * 0.99 as i32 as f32;
-        player.vel_x = player.vel_x * 0.99 as i32 as f32;
-        
-        
-        // println!("Transform: x:{} , y:{}",transform.translation.x, transform.translation.y);
-
+fn display_room(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    rooms: Query<&Room>,
+){
+    for room in &rooms{
+        let backdrop = asset_server.load(room.backdrop_path.clone());
+        commands.spawn(SpriteBundle{
+            sprite: Sprite {
+                ..default()
+            },
+            texture: backdrop,
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, -1.0),
+                scale: Vec3::new(6.0, 6.0, 0.0),
+                ..default()
+            },
+            ..default()
+        });
     }
+}
 
-    //CODE FOR COLLIDERS::
-
-    for (mut player_transform, _, _) in &mut players{
+fn collision_detection(
+    mut player: Query<(&mut Transform, &mut Player)>,
+    colliders: Query<&Collider, Without<Player>>,
+){
+    for (mut player_transform, _) in &mut player{
 
         //create a rect containing the current location of the player
         
@@ -150,7 +120,7 @@ fn player_movement(
         let p_rect = Rect::new(p_left, p_bot, p_right, p_top);
 
 
-        for collider in &mut colliders{
+        for collider in &colliders{
             //we need to check if the player is inside this collider, if so we need to push them outside of it
 
             //create a rect to test against the player rect
@@ -193,20 +163,69 @@ fn player_movement(
             }
         }
     }
+}
+
+fn player_movement(
+    mut players: Query<(&mut Transform, &mut Player, &mut Sprite)>,
+    input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>
+) {
+    for (mut transform, mut player, mut sprite) in &mut players {
+        if input.pressed(KeyCode::ArrowUp) && !input.pressed(KeyCode::ArrowDown) {
+            player.vel_y = 120.0;
+        }
+        if input.pressed(KeyCode::ArrowDown) && !input.pressed(KeyCode::ArrowUp) {
+            player.vel_y = -120.0;
+        }
+        if input.pressed(KeyCode::ArrowRight) && !input.pressed(KeyCode::ArrowLeft) {
+            player.vel_x = 150.0;
+            sprite.flip_x = false;
+        }
+        if input.pressed(KeyCode::ArrowLeft) && !input.pressed(KeyCode::ArrowRight) {
+            player.vel_x = -150.0;
+            sprite.flip_x = true;
+        }
+
+        //apply velocity
+        transform.translation.y += player.vel_y * time.delta_seconds();
+        transform.translation.x += player.vel_x * time.delta_seconds();
+
+        //apply friction
+        player.vel_y = player.vel_y * 0.99 as i32 as f32;
+        player.vel_x = player.vel_x * 0.99 as i32 as f32;
+
+
+
+    }
 
 }
 
 #[derive(Component, PartialEq, Debug)]
 enum ColliderType{
     RIGID,
-    INTERACTABLE,
-    TRIGGER
+    Interactable,
+    ChangeRoom,
+    ChangeLevel,
+    ChangeVar,
+    ChangeState
 }
 
 #[derive(Component)]
 struct Collider {
     transform: Transform,
     style: ColliderType,
+    destination: Option<Room>,
+}
+
+#[derive(Component)]
+struct Room{
+    level: u32,
+    room: u32,
+    var: u32,
+
+    area: Rect,
+
+    backdrop_path: String,
 }
 
 //Helper function for loading files
@@ -217,40 +236,58 @@ where P: AsRef<Path>, {
 }
 
 
+
 fn load_room(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
+
     current_room: Res<CurrentRoom>,
     mut game_state: ResMut<NextState<GameState>>,
-
     in_debug: Res<DebugMode>
 ){
+
     let level = current_room.0;
     let room = current_room.1;
     let var = current_room.2;
+    println!("Loading Room: {}{}{}", level, room, var);
 
-    
-    let file_name: String;
+    let mut height = 0;
+    let mut width = 0;
+
+    let collider_path: String;
     if is_in_windows() {
-        file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
+        collider_path = format!("Assets\\Textures\\Rooms\\cldr{}{}{}.svg", level, room, var).to_string();
     }else{
-        file_name = format!("assets/Maps/Room-col{}{}{}.svg", level, room, var).to_string();
+        collider_path = format!("Asssets//Textures/Rooms/cldr{}{}{}.svg", level, room, var).to_string();
     }
 
 
-    warn!("parsing level from: {}", file_name );
+
+    warn!("parsing level from: {}", collider_path );
 
     let mut i =0;
-    if let Ok(lines) = read_lines(file_name) {
+    if let Ok(lines) = read_lines(collider_path) {
         // Consumes the iterator, returns an (Optional) String
         for line in lines.flatten() {
             //seems like for each line of this file we can create a new collider object
             //lets parse out the important info first
+
+            //line zero is not useful to us so we will increment i at the beginning of the loop to skip index 0
             i += 1;
+            
+            //the rest logic is not useful for the first 2 lines so we will skip them after this.
             if i <=2 {
+                //line 2 contains the SVG info for width and height which we will use to find the size of the room
+                if i == 2{
+                    let lineparts = line.split("\"").collect::<Vec<_>>();
+                    width = lineparts[3].parse().unwrap();
+                    height = lineparts[5].parse().unwrap();
+                }
                 continue;
             }
 
-            if line.contains("svg"){
+            //stop this loop if we find the SVG end tag
+            if line.contains("/svg"){
                 println!("End of file: {}", line);
                 break;
             }
@@ -285,9 +322,8 @@ fn load_room(
                         if part.contains("#"){
                             println!("Found Color: {}", part);
                             col = part;
-
                         }else{
-                            warn!("Could not parse int from part: {}", part)
+                            warn!("Could not parse int from part: {}", part);
                         }
                     }
                 }
@@ -321,17 +357,19 @@ fn load_room(
                 count+=1;
             }
 
+
+            //THIS ACTS AS A KEY TO WHICH COLORS YOU SHOULD BE MAKING YOUR COLLIDERS TO GET THE DESIRED COLLIDERTYPE
             let st = match col{
                 "#000000" =>{
                     ColliderType::RIGID
                 },
 
                 "#00FF00" =>{
-                    ColliderType::TRIGGER
+                    ColliderType::ChangeRoom
                 },
 
                 _ =>{
-                    ColliderType::INTERACTABLE
+                    ColliderType::Interactable
                 }
 
 
@@ -340,8 +378,9 @@ fn load_room(
             col = col.split("#").collect::<Vec<_>>()[1];
             println!("COLOR FOUND: {}", col);
 
-            // println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
+                
 
+            // println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
                 commands.spawn(
                     (Collider {
                         // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
@@ -350,7 +389,8 @@ fn load_room(
                             scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                             .. default()
                         },
-                        style: st
+                        style: st,
+                        destination: None,
                     },
                     SpriteBundle{
                         transform: Transform { 
@@ -372,6 +412,34 @@ fn load_room(
         }
     }
 
+
+    
+    let backdrop: String;
+
+    if is_in_windows() {
+        backdrop = format!("Textures\\Rooms\\back{}{}{}.png", level, room, var).to_string();
+    }else{
+        backdrop = format!("assets/Textures/Rooms/back{}{}{}.png", level, room, var).to_string();
+    }
+
+    println!("Spawning Room with backdrop: {:?}", backdrop);
+
+    commands.spawn(
+        Room {
+            level: level,
+            room: room,
+            var: var,
+
+            area: Rect::new(0.0, 0.0, width as f64, height as f64),
+
+            backdrop_path: backdrop
+        }
+    );
+
+    
+
+
     //finished loading room change InGameState to Running
     game_state.set(GameState::Running);
+
 }

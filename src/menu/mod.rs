@@ -536,7 +536,7 @@ fn display_settings_menu_setup(mut commands: Commands, display_quality: Res<Disp
 
 fn alt_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
-    let background_texture = asset_server.load("textures/background.png");
+    let background_texture = asset_server.load("textures/Roomsbackground.png");
 
     commands.spawn((
         SpriteBundle{

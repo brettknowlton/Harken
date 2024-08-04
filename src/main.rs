@@ -34,12 +34,18 @@ fn main() {
             .build(),
         )
 
-        .insert_resource(resources::DebugMode(false))
 
+        //RESOURCES BABY!
+        .insert_resource(resources::DebugMode(true))
+
+        .insert_resource(Time::<Fixed>::from_hz(32.0))
         .insert_resource(ClearColor(Color::srgba(0.0, 0.0, 0.0, 0.0)))
+
+
         .insert_resource(resources::DisplayQuality::Medium,)
         .insert_resource(resources::Volume(7))
         .insert_resource(resources::CurrentRoom(1, 0, 0))
+
 
         .add_systems(Startup, setup)
 

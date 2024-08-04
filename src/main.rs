@@ -36,7 +36,7 @@ fn main() {
 
         .insert_resource(resources::DebugMode(false))
 
-        .insert_resource(ClearColor(Color::rgba(0.0, 0.0, 0.0, 0.0)))
+        .insert_resource(ClearColor(Color::srgba(0.0, 0.0, 0.0, 0.0)))
         .insert_resource(resources::DisplayQuality::Medium,)
         .insert_resource(resources::Volume(7))
         .insert_resource(resources::CurrentRoom(1, 0, 0))
@@ -68,6 +68,13 @@ fn despawn_screen<T: Component>(
     for entity in &to_despawn {
         commands.entity(entity).despawn_recursive();
     }
+}
+
+pub fn is_in_windows() -> bool {
+    #[cfg(target_os = "windows")]
+    return true;
+    #[cfg(not(target_os = "windows"))]
+    return false;
 }
 
 fn make_visible(mut window: Query<&mut Window>, frames: Res<FrameCount>) {

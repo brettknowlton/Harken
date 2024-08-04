@@ -105,10 +105,10 @@ fn player_movement(
 ) {
     for (mut transform, mut player, mut sprite) in &mut players {
         if input.pressed(KeyCode::ArrowUp) && !input.pressed(KeyCode::ArrowDown) {
-            player.vel_y = 150.0;
+            player.vel_y = 120.0;
         }
         if input.pressed(KeyCode::ArrowDown) && !input.pressed(KeyCode::ArrowUp) {
-            player.vel_y = -150.0;
+            player.vel_y = -120.0;
         }
         if input.pressed(KeyCode::ArrowRight) && !input.pressed(KeyCode::ArrowLeft) {
             player.vel_x = 150.0;
@@ -193,7 +193,6 @@ fn player_movement(
     }
 
 }
-    
 
 #[derive(Component, PartialEq, Debug)]
 enum ColliderType{

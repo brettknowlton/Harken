@@ -6,7 +6,7 @@ pub enum GameState {
     MainMenu,
     Loading,
     Running,
-    Dead,
+    //Dead,
 }
 
 

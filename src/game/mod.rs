@@ -6,10 +6,10 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufRead};
 
-use log::{warn, error, debug};
+use log::{warn, debug};
 
 
-use crate::{SCREEN_HEIGHT, SCREEN_WIDTH, PIXEL_SCALE};
+use crate::{is_in_windows, PIXEL_SCALE};
 
 use super::resources::*;
 
@@ -52,8 +52,8 @@ fn create_game_objects(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let room_texture = asset_server.load("Textures/Rooms/Room-110.png");
-    #[cfg(target_os = "Windows")]{
+    let mut room_texture: Handle<Image> = asset_server.load("Textures/Rooms/Room-110.png");
+    if is_in_windows(){
         room_texture = asset_server.load("Textures\\Rooms\\Room-110.png");
     }
 
@@ -67,14 +67,16 @@ fn create_game_objects(
             texture: room_texture,
             .. default()
         },
-        StaticObject
-    )
+            StaticObject
+        )
     );
 
-    let player_texture = asset_server.load("Textures/Player/Player-Singlet.png");
-    #[cfg(target_os ="Windows")]{
-        let player_texture = asset_server.load("Textures\\Player\\Player-Singlet.png");
+    let mut player_texture: Handle<Image> = asset_server.load("Textures\\Player\\Player-Singlet.png");
+
+    if !is_in_windows() {
+        player_texture = asset_server.load("Textures/Player/Player-Singlet.png");
     }
+        
 
     commands.spawn((
         SpriteBundle{
@@ -226,13 +228,16 @@ fn load_room(
     let room = current_room.1;
     let var = current_room.2;
 
-
-    let file_name = format!("assets/Maps/Room-col{}{}{}.svg", level, room, var).to_string();
-    #[cfg(target_os = "Windows")]{
-    file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
+    
+    let file_name: String;
+    if is_in_windows() {
+        file_name = format!("assets\\Maps\\Room-col{}{}{}.svg", level, room, var).to_string();
+    }else{
+        file_name = format!("assets/Maps/Room-col{}{}{}.svg", level, room, var).to_string();
     }
 
-    warn!("{}", file_name);
+
+    warn!("parsing level from: {}", file_name );
 
     let mut i =0;
     if let Ok(lines) = read_lines(file_name) {
@@ -270,8 +275,6 @@ fn load_room(
                 }
 
                 
-
-
                 match part.parse::<i32>(){
                     Ok(_) =>{
                         println!("Parsed: {}", part.parse::<i16>().unwrap());
@@ -357,7 +360,7 @@ fn load_room(
                             .. default()
                         },
                         sprite: Sprite{
-                            color: Color::hex(col).unwrap(),
+                            color: Color::from(Srgba::hex(col).unwrap()),
                             anchor: Anchor::TopLeft,
                             ..default()
                         },

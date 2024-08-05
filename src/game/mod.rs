@@ -1,8 +1,6 @@
 use bevy::a11y::accesskit::Rect;
-use bevy::math::vec2;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
-use bevy::transform::commands;
 
 use std::fs::{DirEntry, File};
 use std::io::{self, BufRead};
@@ -16,17 +14,18 @@ use super::resources::*;
 
 pub fn game_plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::Loading), (
+        .add_systems(OnEnter(GameState::LevelLoading), load_all_room_data)
+
+        .add_systems(Update, (
             create_game_objects,
-            load_all_room_data,
-            spawn_colliders.after(load_all_room_data)
-        )
-    )
-        .add_systems(OnEnter(GameState::Running), display_rooms)
+            spawn_colliders,
+            display_rooms,
+            ).chain().run_if(in_state(GameState::Loading)))
 
         .add_systems(Update, player_movement.run_if(in_state(GameState::Running)))
         .add_systems(Update, collision_detection.run_if(in_state(GameState::Running)))
-        .add_systems(Update, move_camera.run_if(in_state(GameState::Running)));
+        .add_systems(Update, move_camera.run_if(in_state(GameState::Running)))
+        .add_systems(Update, room_status.run_if(in_state(GameState::Running)));
 }
 
 //Component Used to tag the player and give it velocity
@@ -98,6 +97,7 @@ fn display_rooms(
     rooms: Query<&Room>,
     mut player: Query<(&mut Transform, &mut Player)>,
 
+    mut game_state: ResMut<NextState<GameState>>,
 ) {
     for room in &rooms {
 
@@ -121,6 +121,7 @@ fn display_rooms(
             }
 
             //player is in this room
+            println!("Attempting to display room: {:?}", room.backdrop_path);
             let backdrop = asset_server.load(room.backdrop_path.clone());
             commands.spawn(SpriteBundle {
             sprite: Sprite { ..default() },
@@ -133,11 +134,8 @@ fn display_rooms(
             ..default()
         });
         }
-
-        
-
-        
     }
+    game_state.set(GameState::Running);
 }
 
 fn collision_detection(
@@ -249,14 +247,44 @@ struct Collider {
 
 #[derive(Component)]
 struct Room {
-    level: u32,
-    room: u32,
-    var: u32,
+    active: bool,
 
     area: Rect,
 
     backdrop_path: String,
     colliders: Vec<Collider>,
+}
+
+fn room_status(
+    mut rooms: Query<&mut Room>,
+    players: Query<(&Transform, &Player)>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
+    for mut room in &mut rooms {
+        //set room to active it the room's rect intersects with the player's rect
+        for (player_transform, _) in &players {
+            let px_scale: f64 = PIXEL_SCALE as f64;
+            let p_left: f64 = player_transform.translation.x as f64;
+            let p_right: f64 = p_left + px_scale;
+
+            let p_bot: f64 = player_transform.translation.y as f64;
+            let py_scale: f64 = player_transform.scale.y as f64;
+            let p_top: f64 = p_bot + py_scale;
+
+            let p_rect = Rect::new(p_left, p_bot, p_right, p_top);
+
+            if room.area.intersect(p_rect).area() != 0.0 {
+                if room.active {
+                    //player is in this room and it is already active
+                    return;
+                } else {
+                    //player is intersecting an inactive room, we need to re-load all rooms
+                    room.active = true;
+                    game_state.set(GameState::Loading);
+                }
+            }
+        }
+    }
 }
 
 //Helper function for loading files
@@ -281,33 +309,41 @@ fn load_all_room_data(
     if is_in_windows() {
         rooms_path = format!("Assets\\Textures\\Rooms\\L{}", current_room.0);
     } else {
-        rooms_path = format!("Assets/Textures/Rooms/L{}", current_room.0);
+        rooms_path = format!("Assets\\Textures/Rooms/L{}", current_room.0);
     }
     println!("Looking for rooms in: {}", rooms_path);
 
     let paths = std::fs::read_dir(rooms_path);
     match paths {
         Ok(_) => {
-            println!("Found Rooms Folder");
+            info!("Found Rooms Folder");
         }
         Err(_) => {
             warn!("Could not read rooms folder");
         }
     }
 
-    let mut bg_paths = Vec::<DirEntry>::new();
+    let mut bg_paths = Vec::<String>::new();
     let mut cl_paths = Vec::<String>::new();
     let mut fg_paths = Vec::<String>::new();
 
     for item in paths.unwrap() {
         match item {
             Ok(item) => {
-                let item_name: String = item.path().display().to_string();
+                let mut item_name: String = item.path().display().to_string();
+                if is_in_windows() {
+                    item_name = item_name.replace("Assets\\", "");
+                } else {
+                    item_name = item_name.replace("Assets/", "");
+                }
+                info!("Found file: {}", item_name.clone());
 
-                println!("Found file: {}", item_name.clone());
+                //remove the assets folder from the path as the asset server will add it back
+                
+                
 
                 if item_name.contains("back") {
-                    bg_paths.push(item);
+                    bg_paths.push(item_name);
                 } else if item_name.contains("cldr") {
                     cl_paths.push(item_name);
                 } else if item_name.contains("fore") {
@@ -320,31 +356,61 @@ fn load_all_room_data(
         }
     }
 
-    let colliders = load_colliders(
-        bg_paths[0].path().display().to_string(),
-        in_debug,
-        asset_server,
-    );
-
     for item in bg_paths {
+        let colliders = load_colliders(
+            item.clone(),
+            in_debug.0
+        );
 
-        println!("Spawning Room with backdrop: {:?}", item.path().display().to_string());
+        println!("Spawning Room with backdrop: {:?}", item);
         commands.spawn(Room {
-            level: current_room.0,
-            room: current_room.1,
-            var: current_room.2,
-            area: get_area(item.path().display().to_string()),
-            backdrop_path: item.path().display().to_string(),
+            active: false,
+            area: get_area(&item),
+            backdrop_path: item.clone(),
             colliders: colliders.clone(),
         });
     }
 
-    game_state.set(GameState::Running);
+    game_state.set(GameState::Loading);
 }
 
-fn get_area(backdrop_path: String) -> Rect {
+
+fn spawn_colliders(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+
+    rooms: Query<&Room>,
+    in_debug: Res<DebugMode>,
+) {
+    for room in &rooms {
+        if(room.active){
+            for collider in &room.colliders {
+                commands.spawn(*collider);
+    
+                if in_debug.0 {
+                    info!("A collider was created at: {:?}", collider.transform);
+                    commands.spawn(SpriteBundle {
+                        sprite: Sprite {
+                            custom_size: Some(Vec2::new(1.0, 1.0)),
+                            ..default()
+                        },
+                        transform: collider.transform,
+                        texture: asset_server.load("Textures\\Rooms\\cldr.png"),
+                        ..default()
+                    });
+                }
+            }
+        }
+    }
+}
+
+
+///This function will parse the collider file and return the area of the room
+/// This area will be the smallest rectangle that can contain all colliders
+/// This function is NOT scheduled by bevy
+fn get_area(backdrop_path: &String) -> Rect {
     let collider_path: String = backdrop_path.replace("back", "cldr");
-    warn!("parsing level from: {}", collider_path);
+    warn!("Calculating room area using: {}", collider_path);
 
     let mut i = 0;
 
@@ -374,13 +440,12 @@ fn get_area(backdrop_path: String) -> Rect {
     Rect::new(0.0, height as f64, 0.0, width as f64)
 }
 
-fn load_colliders(
-    backdrop_path: String,
-    in_debug: Res<DebugMode>,
-    asset_server: Res<AssetServer>,
-) -> Vec<Collider> {
+
+///This function will parse the collider file and return a vector of colliders
+/// This function is NOT scheduled by bevy
+fn load_colliders(backdrop_path: String, in_debug: bool,) -> Vec<Collider> {
     let collider_path: String = backdrop_path.replace("back", "cldr");
-    warn!("parsing level from: {}", collider_path);
+    warn!("parsing level colliders from: {}", collider_path);
 
     let mut colliders = Vec::<Collider>::new();
     let mut i = 0;
@@ -478,7 +543,7 @@ fn load_colliders(
                     translation: Vec3::new(
                         (x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH / 2.0),
                         (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE),
-                        in_debug.0 as i32 as f32,
+                        5.0
                     ),
                     scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                     ..default()
@@ -489,214 +554,3 @@ fn load_colliders(
     }
     return colliders;
 }
-
-fn spawn_colliders(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-
-    rooms: Query<&Room>,
-
-    mut game_state: ResMut<NextState<GameState>>,
-    in_debug: Res<DebugMode>,
-) {
-    for room in &rooms {
-
-        for collider in &room.colliders {
-            commands.spawn(*collider);
-
-            if in_debug.0 {
-                commands.spawn(SpriteBundle {
-                    sprite: Sprite {
-                        custom_size: Some(Vec2::new(1.0, 1.0)),
-                        ..default()
-                    },
-                    transform: collider.transform,
-                    texture: asset_server.load("Textures\\Rooms\\cldr.png"),
-                    ..default()
-                });
-            }
-        }
-
-        
-    }
-}
-
-// fn load_room(
-//     mut commands: Commands,
-//     asset_server: Res<AssetServer>,
-
-//     current_room: Res<CurrentRoom>,
-//     mut game_state: ResMut<NextState<GameState>>,
-//     in_debug: Res<DebugMode>,
-// ) {
-//     let level = current_room.0;
-//     let room = current_room.1;
-//     let var = current_room.2;
-//     println!("Loading Room: {}{}{}", level, room, var);
-
-//     let mut height = 0;
-//     let mut width = 0;
-
-//     let collider_path: String;
-//     if is_in_windows() {
-//         collider_path =
-//             format!("Assets\\Textures\\Rooms\\cldr{}{}{}.svg", level, room, var).to_string();
-//     } else {
-//         collider_path =
-//             format!("Asssets//Textures/Rooms/cldr{}{}{}.svg", level, room, var).to_string();
-//     }
-
-//     warn!("parsing level from: {}", collider_path);
-
-//     let mut i = 0;
-//     if let Ok(lines) = read_lines(collider_path) {
-//         // Consumes the iterator, returns an (Optional) String
-//         for line in lines.flatten() {
-//             //seems like for each line of this file we can create a new collider object
-//             //lets parse out the important info first
-
-//             //line zero is not useful to us so we will increment i at the beginning of the loop to skip index 0
-//             i += 1;
-
-//             //the rest logic is not useful for the first 2 lines so we will skip them after this.
-//             if i <= 2 {
-//                 //line 2 contains the SVG info for width and height which we will use to find the size of the room
-//                 if i == 2 {
-//                     let lineparts = line.split("\"").collect::<Vec<_>>();
-//                     width = lineparts[3].parse().unwrap();
-//                     height = lineparts[5].parse().unwrap();
-//                 }
-//                 continue;
-//             }
-
-//             //stop this loop if we find the SVG end tag
-//             if line.contains("/svg") {
-//                 println!("End of file: {}", line);
-//                 break;
-//             }
-
-//             //create important variables we will use to create our collider
-//             let mut x: i16 = 0;
-//             let mut y: i16 = 0;
-//             let mut w: i16 = 0;
-//             let mut h: i16 = 0;
-//             let mut col: &str = "";
-
-//             let pretty_line = line.trim();
-//             let parts = pretty_line.split("\"").collect::<Vec<_>>();
-
-//             let mut ints = Vec::<i16>::new();
-
-//             let mut count = 0;
-//             for part in parts {
-//                 count += 1;
-//                 if (count - 1) % 2 == 0 {
-//                     continue;
-//                 }
-
-//                 match part.parse::<i32>() {
-//                     Ok(_) => {
-//                         println!("Parsed: {}", part.parse::<i16>().unwrap());
-//                         ints.push(part.parse::<i16>().unwrap());
-//                     }
-
-//                     Err(_) => {
-//                         if part.contains("#") {
-//                             println!("Found Color: {}", part);
-//                             col = part;
-//                         } else {
-//                             warn!("Could not parse int from part: {}", part);
-//                         }
-//                     }
-//                 }
-//             }
-
-//             count = 0;
-//             for item in ints {
-//                 match count % 4 {
-//                     0 => x = item,
-
-//                     1 => y = item,
-
-//                     2 => w = item,
-
-//                     3 => h = item,
-
-//                     _ => {
-//                         warn!("This should never print")
-//                     }
-//                 }
-//                 count += 1;
-//             }
-
-//             //THIS ACTS AS A KEY TO WHICH COLORS YOU SHOULD BE MAKING YOUR COLLIDERS TO GET THE DESIRED COLLIDERTYPE
-//             let st = match col {
-//                 "#000000" => ColliderType::RIGID,
-
-//                 "#00FF00" => ColliderType::ChangeRoom,
-
-//                 _ => ColliderType::Interactable,
-//             };
-
-//             col = col.split("#").collect::<Vec<_>>()[1];
-//             println!("COLOR FOUND: {}", col);
-
-//             // println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
-//             commands.spawn((Collider {
-//                 // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
-//                 transform: Transform {
-//                     translation: Vec3::new(
-//                         (x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH / 2.0),
-//                         (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE),
-//                         in_debug.0 as i32 as f32,
-//                     ),
-//                     scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
-//                     ..default()
-//                 },
-//                 style: st,
-//             },));
-//             if in_debug.0 {
-//                 commands.spawn(SpriteBundle {
-//                     sprite: Sprite {
-//                         custom_size: Some(Vec2::new(1.0, 1.0)),
-//                         ..default()
-//                     },
-//                     transform: Transform {
-//                         translation: Vec3::new(
-//                             (x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH / 2.0),
-//                             (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE),
-//                             5.0,
-//                         ),
-//                         scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
-//                         ..default()
-//                     },
-//                     texture: asset_server.load("Textures\\Rooms\\cldr.png"),
-//                     ..default()
-//                 });
-//             }
-//         }
-//     }
-
-//     let backdrop: String;
-
-//     if is_in_windows() {
-//         backdrop = format!("Textures\\Rooms\\back{}{}{}.png", level, room, var).to_string();
-//     } else {
-//         backdrop = format!("assets/Textures/Rooms/back{}{}{}.png", level, room, var).to_string();
-//     }
-
-//     println!("Spawning Room with backdrop: {:?}", backdrop);
-
-//     commands.spawn(Room {
-//         level: level,
-//         room: room,
-//         var: var,
-
-//         area: Rect::new(0.0, 0.0, width as f64, height as f64),
-
-//         backdrop_path: backdrop,
-//     });
-
-//     //finished loading room change InGameState to Running
-//     game_state.set(GameState::Running);
-// }

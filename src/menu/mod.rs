@@ -20,9 +20,6 @@ enum MainMenuState {
 pub fn main_menu_plugin(app: &mut App) {
     app 
         .init_state::<MainMenuState>()
-
-
-        
         //.add_systems(OnEnter(GameState::MainMenu), main_menu_setup)
         
         .add_systems(OnEnter(MainMenuState::Splash), splash_setup)
@@ -710,7 +707,7 @@ fn menu_action(
         if *interaction == Interaction::Pressed {
             match menu_button_action {
                 MenuButtonAction::Play => {
-                    game_state.set(GameState::Loading);
+                    game_state.set(GameState::LevelLoading);
                     menu_state.set(MainMenuState::Disabled);
                     current_room.0 = 1;
                     current_room.1 = 0;

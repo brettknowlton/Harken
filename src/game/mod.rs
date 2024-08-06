@@ -14,10 +14,9 @@ use super::resources::*;
 
 pub fn game_plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::LevelLoading), load_level_room_data)
+        .add_systems(OnEnter(GameState::LevelLoading), (load_level_room_data, create_game_objects))
 
         .add_systems(Update, (
-            create_game_objects,
             spawn_colliders,
             display_rooms,
         ).chain().run_if(in_state(GameState::Loading)))
@@ -355,23 +354,26 @@ fn load_level_room_data(
         }
     }
 
-        for item in bg_paths {
+
+        for item in bg_paths {//why the fuck is this
+
             let colliders = load_colliders(
-            item.clone(),
-            in_debug.0
+                item.clone(),
+                in_debug.0
+            );
+
+            println!("Spawning Room with backdrop: {:?}", item);
+            commands.spawn(Room {
+                level: current_room.0,
+                room: current_room.1,
+                var: current_room.2,
+
+                active: true,
+                area: get_area(&item),
+                backdrop_path: item.clone(),
+                colliders: colliders.clone(),
+            }
         );
-
-        println!("Spawning Room with backdrop: {:?}", item);
-        commands.spawn(Room {
-            level: current_room.0,
-            room: current_room.1,
-            var: current_room.2,
-
-            active: true,
-            area: get_area(&item),
-            backdrop_path: item.clone(),
-            colliders: colliders.clone(),
-        });
     }
 
     game_state.set(GameState::Loading);

@@ -14,17 +14,18 @@ use super::resources::*;
 
 pub fn game_plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::LevelLoading), load_all_room_data)
+        .add_systems(OnEnter(GameState::LevelLoading), load_level_room_data)
 
         .add_systems(Update, (
             create_game_objects,
             spawn_colliders,
             display_rooms,
-            ).chain().run_if(in_state(GameState::Loading)))
+        ).chain().run_if(in_state(GameState::Loading)))
 
         .add_systems(Update, player_movement.run_if(in_state(GameState::Running)))
         .add_systems(Update, collision_detection.run_if(in_state(GameState::Running)))
         .add_systems(Update, move_camera.run_if(in_state(GameState::Running)))
+
         .add_systems(Update, room_status.run_if(in_state(GameState::Running)));
 }
 
@@ -95,7 +96,6 @@ fn display_rooms(
     mut commands: Commands, 
     asset_server: Res<AssetServer>, 
     rooms: Query<&Room>,
-    mut player: Query<(&mut Transform, &mut Player)>,
 
     mut game_state: ResMut<NextState<GameState>>,
 ) {
@@ -103,38 +103,24 @@ fn display_rooms(
 
         let mut p_rect: Rect;
         //check if the player's hitbox intersects with the room's area
-        for (player_transform, _) in &mut player {
-            
-            let px_scale: f64 = (PIXEL_SCALE * 0.625) as f64;
-            let p_left: f64 = player_transform.translation.x as f64;
-            let p_right: f64 = p_left + px_scale;
-
-            let p_bot: f64 = player_transform.translation.y as f64;
-            let py_scale: f64 = player_transform.scale.y as f64 * 0.2;
-            let p_top: f64 = p_bot + py_scale;
-
-            p_rect = Rect::new(p_left, p_bot, p_right, p_top);
-
-            if room.area.intersect(p_rect).area() != 0.0 {
-                //player NOT is in this room
-                break;
-            }
-
-            //player is in this room
+        
+        if room.active {
+            //this is an active room that should be displayed
             println!("Attempting to display room: {:?}", room.backdrop_path);
             let backdrop = asset_server.load(room.backdrop_path.clone());
             commands.spawn(SpriteBundle {
-            sprite: Sprite { ..default() },
-            texture: backdrop,
-            transform: Transform {
-                translation: Vec3::new(0.0, 0.0, -1.0),
-                scale: Vec3::new(6.0, 6.0, 0.0),
+                sprite: Sprite { ..default() },
+                texture: backdrop,
+                transform: Transform {
+                    translation: Vec3::new(0.0, 0.0, -1.0),
+                    scale: Vec3::new(6.0, 6.0, 0.0),
+                    ..default()
+                },
                 ..default()
-            },
-            ..default()
-        });
+            });
         }
     }
+
     game_state.set(GameState::Running);
 }
 
@@ -247,6 +233,10 @@ struct Collider {
 
 #[derive(Component)]
 struct Room {
+    level: u32,
+    room: u32,
+    var: u32,
+
     active: bool,
 
     area: Rect,
@@ -275,12 +265,19 @@ fn room_status(
 
             if room.area.intersect(p_rect).area() != 0.0 {
                 if room.active {
+                    println!("Player is intersecting room: {}{}{}", room.level, room.room, room.var);
                     //player is in this room and it is already active
                     return;
                 } else {
-                    //player is intersecting an inactive room, we need to re-load all rooms
+                    //player is intersecting an inactive room, we now need to re-load rooms and display
                     room.active = true;
                     game_state.set(GameState::Loading);
+                }
+            }else{
+                //player is not intersecting this room
+                if room.active {
+                    //we are intersecting an inactive room that should be de-activated
+                    room.active= false;
                 }
             }
         }
@@ -292,11 +289,13 @@ fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
     P: AsRef<Path>,
 {
+    warn!("Reading file: {:?}", filename.as_ref());
+
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
 
-fn load_all_room_data(
+fn load_level_room_data(
     mut commands: Commands,
     in_debug: Res<DebugMode>,
     asset_server: Res<AssetServer>,
@@ -356,15 +355,19 @@ fn load_all_room_data(
         }
     }
 
-    for item in bg_paths {
-        let colliders = load_colliders(
+        for item in bg_paths {
+            let colliders = load_colliders(
             item.clone(),
             in_debug.0
         );
 
         println!("Spawning Room with backdrop: {:?}", item);
         commands.spawn(Room {
-            active: false,
+            level: current_room.0,
+            room: current_room.1,
+            var: current_room.2,
+
+            active: true,
             area: get_area(&item),
             backdrop_path: item.clone(),
             colliders: colliders.clone(),
@@ -382,6 +385,8 @@ fn spawn_colliders(
     rooms: Query<&Room>,
     in_debug: Res<DebugMode>,
 ) {
+
+
     for room in &rooms {
         if(room.active){
             for collider in &room.colliders {
@@ -392,6 +397,7 @@ fn spawn_colliders(
                     commands.spawn(SpriteBundle {
                         sprite: Sprite {
                             custom_size: Some(Vec2::new(1.0, 1.0)),
+                            anchor: Anchor::TopLeft,
                             ..default()
                         },
                         transform: collider.transform,
@@ -409,17 +415,26 @@ fn spawn_colliders(
 /// This area will be the smallest rectangle that can contain all colliders
 /// This function is NOT scheduled by bevy
 fn get_area(backdrop_path: &String) -> Rect {
-    let collider_path: String = backdrop_path.replace("back", "cldr");
+    let mut collider_path: String = backdrop_path.replace("back", "cldr");
+    collider_path = collider_path.replace(".png", ".svg");
+    
+    if is_in_windows(){
+        collider_path = collider_path.replace("Textures", "Assets\\textures");
+    }else{
+        collider_path = collider_path.replace("Textures", "Assets/textures");
+    }
+
     warn!("Calculating room area using: {}", collider_path);
 
     let mut i = 0;
 
     let mut height = 0.0;
     let mut width = 0.0;
-
     if let Ok(lines) = read_lines(collider_path) {
         // Consumes the iterator, returns an (Optional) String
         for line in lines.flatten() {
+            warn!("{}", line);
+
             i += 1;
             if i > 2 {
                 break;
@@ -429,22 +444,33 @@ fn get_area(backdrop_path: &String) -> Rect {
                 //line 2 contains the SVG info for width and height which we will use to find the size of the room
                 if i == 2 {
                     let lineparts = line.split("\"").collect::<Vec<_>>();
-                    width = lineparts[3].parse().unwrap();
-                    height = lineparts[5].parse().unwrap();
+                    width = lineparts[3].parse::<u32>().unwrap() as f32;
+                    height = lineparts[5].parse::<u32>().unwrap() as f32;
                 }
                 continue;
             }
         }
     }
+    println!("Creating Room Area with coordinates: 0,0,{},{}", width * PIXEL_SCALE, height * PIXEL_SCALE);
 
-    Rect::new(0.0, height as f64, 0.0, width as f64)
+    Rect::new(0.0, 0.0, (width * PIXEL_SCALE) as f64,(height * PIXEL_SCALE) as f64)
 }
 
 
 ///This function will parse the collider file and return a vector of colliders
 /// This function is NOT scheduled by bevy
 fn load_colliders(backdrop_path: String, in_debug: bool,) -> Vec<Collider> {
-    let collider_path: String = backdrop_path.replace("back", "cldr");
+
+    let mut collider_path: String = backdrop_path.replace("back", "cldr");
+    collider_path = collider_path.replace(".png", ".svg");
+    
+    if is_in_windows(){
+        collider_path = collider_path.replace("Textures", "Assets\\textures");
+    }else{
+        collider_path = collider_path.replace("Textures", "Assets/textures");
+    }
+
+
     warn!("parsing level colliders from: {}", collider_path);
 
     let mut colliders = Vec::<Collider>::new();

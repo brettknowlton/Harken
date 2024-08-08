@@ -322,8 +322,6 @@ fn load_level_room_data(
     }
 
     let mut bg_paths = Vec::<String>::new();
-    let mut cl_paths = Vec::<String>::new();
-    let mut fg_paths = Vec::<String>::new();
 
     for item in paths.unwrap() {
         match item {
@@ -342,10 +340,42 @@ fn load_level_room_data(
 
                 if item_name.contains("back") {
                     bg_paths.push(item_name);
-                } else if item_name.contains("cldr") {
-                    cl_paths.push(item_name);
-                } else if item_name.contains("fore") {
-                    fg_paths.push(item_name);
+
+                    let colliders = load_colliders(
+                        &item_name.clone(),
+                        in_debug.0);
+
+                    println!("Spawning Room with backdrop: {:?}", item_name);
+                    let room_area = get_area(&item_name);
+
+                    commands.spawn(Room {
+                        level: current_room.0,
+                        room: current_room.1,
+                        var: current_room.2,
+
+                        active: false,
+                        area: room_area,
+                        backdrop_path: item_name.clone(),
+                        colliders: colliders.clone(),
+                    });
+
+                    commands.spawn(
+                        SpriteBundle {
+                            sprite: Sprite {
+                                custom_size: Some(Vec2::new(1.0, 1.0)),
+                                anchor: Anchor::TopLeft,
+                                ..default()
+                            },
+                            transform: Transform {
+                                translation: Vec3::new(0.0, 0.0, 5.0),
+                                scale: Vec3::new(room_area.width() as f32, room_area.height() as f32, 0.0),
+                                ..default() 
+                            },
+                            texture: asset_server.load("Textures\\Rooms\\cldr.png"),
+                            ..default()
+                        }
+                    );
+
                 }
             }
             Err(_) => {
@@ -456,6 +486,7 @@ fn get_area(backdrop_path: &String) -> Rect {
     println!("Creating Room Area with coordinates: 0,0,{},{}", width * PIXEL_SCALE, height * PIXEL_SCALE);
 
     Rect::new(0.0, 0.0, (width * PIXEL_SCALE) as f64,(height * PIXEL_SCALE) as f64)
+
 }
 
 

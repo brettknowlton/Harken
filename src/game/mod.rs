@@ -321,11 +321,11 @@ fn load_level_room_data(
         }
     }
 
-    let mut bg_paths = Vec::<String>::new();
-
     for item in paths.unwrap() {
         match item {
             Ok(item) => {
+                
+                //remove the assets folder from the path as the asset server will add it back
                 let mut item_name: String = item.path().display().to_string();
                 if is_in_windows() {
                     item_name = item_name.replace("Assets\\", "");
@@ -334,15 +334,15 @@ fn load_level_room_data(
                 }
                 info!("Found file: {}", item_name.clone());
 
-                //remove the assets folder from the path as the asset server will add it back
                 
                 
 
                 if item_name.contains("back") {
-                    bg_paths.push(item_name);
+
+                    let collider_path = item_name.replace("back", "cldr");
 
                     let colliders = load_colliders(
-                        &item_name.clone(),
+                        collider_path,
                         in_debug.0);
 
                     println!("Spawning Room with backdrop: {:?}", item_name);
@@ -382,28 +382,6 @@ fn load_level_room_data(
                 warn!("Could not read item in rooms folder");
             }
         }
-    }
-
-
-        for item in bg_paths {//why the fuck is this
-
-            let colliders = load_colliders(
-                item.clone(),
-                in_debug.0
-            );
-
-            println!("Spawning Room with backdrop: {:?}", item);
-            commands.spawn(Room {
-                level: current_room.0,
-                room: current_room.1,
-                var: current_room.2,
-
-                active: true,
-                area: get_area(&item),
-                backdrop_path: item.clone(),
-                colliders: colliders.clone(),
-            }
-        );
     }
 
     game_state.set(GameState::Loading);
@@ -487,6 +465,8 @@ fn get_area(backdrop_path: &String) -> Rect {
 
     Rect::new(0.0, 0.0, (width * PIXEL_SCALE) as f64,(height * PIXEL_SCALE) as f64)
 
+
+    
 }
 
 

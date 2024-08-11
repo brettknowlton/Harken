@@ -76,7 +76,7 @@ fn create_game_objects(
                 scale: Vec3 {
                     x: PIXEL_SCALE,
                     y: PIXEL_SCALE,
-                    z: 0.0,
+                    z: 1.0,
                 },
                 ..Default::default()
             },
@@ -99,8 +99,6 @@ fn display_rooms(
     mut game_state: ResMut<NextState<GameState>>,
 ) {
     for room in &rooms {
-
-        let mut p_rect: Rect;
         //check if the player's hitbox intersects with the room's area
         
         if room.active {
@@ -108,13 +106,12 @@ fn display_rooms(
             println!("Attempting to display room: {:?}", room.backdrop_path);
             let backdrop = asset_server.load(room.backdrop_path.clone());
             commands.spawn(SpriteBundle {
-                sprite: Sprite { ..default() },
-                texture: backdrop,
-                transform: Transform {
-                    translation: Vec3::new(0.0, 0.0, -1.0),
-                    scale: Vec3::new(6.0, 6.0, 0.0),
-                    ..default()
+                sprite: Sprite { 
+                    anchor: Anchor::BottomLeft,
+                     ..default() 
                 },
+                texture: backdrop,
+                transform: room.location,
                 ..default()
             });
         }
@@ -219,9 +216,6 @@ enum ColliderType {
     RIGID,
     Interactable,
     ChangeRoom,
-    ChangeLevel,
-    ChangeVar,
-    ChangeState,
 }
 
 #[derive(Component, Clone, Copy)]
@@ -232,9 +226,7 @@ struct Collider {
 
 #[derive(Component)]
 struct Room {
-    level: u32,
-    room: u32,
-    var: u32,
+    location: Transform,
 
     active: bool,
 
@@ -264,7 +256,7 @@ fn room_status(
 
             if room.area.intersect(p_rect).area() != 0.0 {
                 if room.active {
-                    println!("Player is intersecting room: {}{}{}", room.level, room.room, room.var);
+                    println!("Player is intersecting room: {:?}", room.location);
                     //player is in this room and it is already active
                     return;
                 } else {
@@ -336,45 +328,73 @@ fn load_level_room_data(
 
                 
                 
-
+                //if the item is a backdrop we will create a room with the backdrop and colliders
                 if item_name.contains("back") {
+
+                    let cleaner = item_name.replace("back", "").replace(".png", "");
+                    let location_info: Vec<&str> = cleaner.split("_").collect();
+
+                    let location = &Transform {
+                        translation: Vec3::new(
+                            location_info[1].parse::<f32>().unwrap() * PIXEL_SCALE,
+                            location_info[2].parse::<f32>().unwrap() * PIXEL_SCALE,
+                            -1.0,
+                        ),
+                        scale: Vec3::new(6.0, 6.0, 0.0),
+                        ..default()
+                    };
+
+
+                    warn!("Location: {:?}", location);
+
+                    println!("Spawning Room with backdrop: {:?}", item_name);
+                    let room_area = get_area(&item_name);
 
                     let collider_path = item_name.replace("back", "cldr");
 
                     let colliders = load_colliders(
                         collider_path,
-                        in_debug.0);
+                        in_debug.0,
+                        location,
+                        &room_area
+                    );
 
-                    println!("Spawning Room with backdrop: {:?}", item_name);
-                    let room_area = get_area(&item_name);
-
-                    commands.spawn(Room {
-                        level: current_room.0,
-                        room: current_room.1,
-                        var: current_room.2,
-
+                    let built_room = Room {
+                        location: *location,
                         active: false,
                         area: room_area,
                         backdrop_path: item_name.clone(),
-                        colliders: colliders.clone(),
-                    });
+                        colliders: colliders,
+                    };
 
-                    commands.spawn(
-                        SpriteBundle {
-                            sprite: Sprite {
-                                custom_size: Some(Vec2::new(1.0, 1.0)),
-                                anchor: Anchor::TopLeft,
+                    commands.spawn(built_room);
+
+                    if(in_debug.0){
+                        commands.spawn(
+                            SpriteBundle {
+                                sprite: Sprite {
+                                    custom_size: Some(Vec2::new(1.0, 1.0)),
+                                    anchor: Anchor::BottomLeft,
+                                    ..default()
+                                },
+    
+    
+                                transform: Transform {
+                                    translation: Vec3::new(
+                                        location_info[1].parse::<f32>().unwrap() * PIXEL_SCALE,
+                                        location_info[2].parse::<f32>().unwrap() * PIXEL_SCALE,
+                                        5.0,
+                                    ),
+                                    scale: Vec3::new(room_area.width() as f32, room_area.height() as f32, 0.0),
+                                    ..default()
+                                },
+    
+    
+                                texture: asset_server.load("Textures\\Rooms\\cldr.png"),
                                 ..default()
-                            },
-                            transform: Transform {
-                                translation: Vec3::new(0.0, 0.0, 5.0),
-                                scale: Vec3::new(room_area.width() as f32, room_area.height() as f32, 0.0),
-                                ..default() 
-                            },
-                            texture: asset_server.load("Textures\\Rooms\\cldr.png"),
-                            ..default()
-                        }
-                    );
+                            }
+                        );
+                    }
 
                 }
             }
@@ -472,7 +492,7 @@ fn get_area(backdrop_path: &String) -> Rect {
 
 ///This function will parse the collider file and return a vector of colliders
 /// This function is NOT scheduled by bevy
-fn load_colliders(backdrop_path: String, in_debug: bool,) -> Vec<Collider> {
+fn load_colliders(backdrop_path: String, in_debug: bool, room_location: &Transform, room_area: &Rect) -> Vec<Collider> {
 
     let mut collider_path: String = backdrop_path.replace("back", "cldr");
     collider_path = collider_path.replace(".png", ".svg");
@@ -578,10 +598,12 @@ fn load_colliders(backdrop_path: String, in_debug: bool,) -> Vec<Collider> {
             // println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
             colliders.push(Collider {
                 // transform: Rect::new((x*96).into(), (y*96).into(), ((x+w)*96).into(), ((y+h)*96).into()),
+
+                //(x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (),
                 transform: Transform {
                     translation: Vec3::new(
-                        (x as f32 * PIXEL_SCALE) + PIXEL_SCALE * 2.0 - (SCREEN_WIDTH / 2.0),
-                        (-3.5 * PIXEL_SCALE + (SCREEN_HEIGHT / 2.0)) - (y as f32 * PIXEL_SCALE),
+                        room_location.translation.x + x as f32 * PIXEL_SCALE,
+                        room_area.height() as f32 + room_location.translation.y - (y as f32 * PIXEL_SCALE),
                         5.0
                     ),
                     scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),

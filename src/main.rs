@@ -36,7 +36,7 @@ fn main() {
 
 
         //RESOURCES BABY!
-        .insert_resource(resources::DebugMode(true))
+        .insert_resource(resources::DebugMode(false))
 
         .insert_resource(Time::<Fixed>::from_hz(32.0))
         .insert_resource(ClearColor(Color::srgba(0.0, 0.0, 0.0, 0.0)))

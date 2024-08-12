@@ -1,7 +1,4 @@
 use bevy::{app::AppExit, prelude::*};
-
-use crate::resources::CurrentRoom;
-
 use super::{despawn_screen, resources::*};
 
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
@@ -701,7 +698,7 @@ fn menu_action(
     mut app_exit_events: EventWriter<AppExit>,
     mut menu_state: ResMut<NextState<MainMenuState>>,
     mut game_state: ResMut<NextState<GameState>>,
-    mut current_room: ResMut<CurrentRoom>
+    mut current_level: ResMut<CurrentLevel>
 ){
     for (interaction, menu_button_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
@@ -709,8 +706,7 @@ fn menu_action(
                 MenuButtonAction::Play => {
                     game_state.set(GameState::LevelLoading);
                     menu_state.set(MainMenuState::Disabled);
-                    current_room.0 = 1;
-                    current_room.1 = 0;
+                    current_level.0 = 1;
                 }
                 MenuButtonAction::Continue => {
                     game_state.set(GameState::Loading);

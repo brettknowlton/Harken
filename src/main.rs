@@ -36,7 +36,7 @@ fn main() {
 
 
         //RESOURCES BABY!
-        .insert_resource(resources::DebugMode(false))
+        .insert_resource(resources::DebugMode(true))
 
         .insert_resource(Time::<Fixed>::from_hz(32.0))
         .insert_resource(ClearColor(Color::srgba(0.0, 0.0, 0.0, 0.0)))
@@ -44,7 +44,7 @@ fn main() {
 
         .insert_resource(resources::DisplayQuality::Medium,)
         .insert_resource(resources::Volume(7))
-        .insert_resource(resources::CurrentRoom(1, 0, 0))
+        .insert_resource(resources::CurrentLevel(1))
 
 
         .add_systems(Startup, setup)

@@ -8,7 +8,7 @@ use std::path::Path;
 
 use log::{debug, warn};
 
-use crate::{is_in_windows, PIXEL_SCALE};
+use crate::{IS_IN_WINDOWS, PIXEL_SCALE};
 
 use super::resources::*;
 
@@ -57,12 +57,15 @@ fn create_game_objects(
     mut commands: Commands, 
     asset_server: Res<AssetServer>
 ) {
-    let mut player_texture: Handle<Image> =
-        asset_server.load("Textures\\Player\\Player-Singlet.png");
+    
+    let tex;
 
-    if !is_in_windows() {
-        player_texture = asset_server.load("Textures/Player/Player-Singlet.png");
+    if IS_IN_WINDOWS {
+        tex = asset_server.load("textures\\player\\player-singlet.png");
+    }else {
+        tex = asset_server.load("textures/player/player-singlet.png");
     }
+
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
@@ -71,7 +74,7 @@ fn create_game_objects(
                 anchor: Anchor::BottomLeft,
                 ..default()
             },
-            texture: player_texture,
+            texture: tex,
             transform: Transform {
                 scale: Vec3 {
                     x: PIXEL_SCALE,

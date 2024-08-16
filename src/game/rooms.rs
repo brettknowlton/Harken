@@ -1,10 +1,11 @@
+use bevy::render::texture;
 use bevy::{a11y::accesskit::Rect, scene::ron::de};
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 
 use log::{debug, warn};
 
-use crate::{despawn_screen, game::{read_lines, ColliderType}, is_in_windows, PIXEL_SCALE};
+use crate::{despawn_screen, game::{read_lines, ColliderType}, IS_IN_WINDOWS, PIXEL_SCALE};
 
 use super::{Collider, DebugMode, GameState, Player, };
 
@@ -96,6 +97,15 @@ fn spawn_colliders(
     
                 if in_debug.0 {
                     info!("A collider was created at: {:?}", collider.transform);
+
+                    let tex;
+
+                    if IS_IN_WINDOWS{
+                        tex = asset_server.load("Textures\\Rooms\\cldr.png");
+                    }else{
+                        tex = asset_server.load("Textures/Rooms/cldr.png");
+                    }
+
                     commands.spawn((
                         SpriteBundle {
                             sprite: Sprite {
@@ -104,7 +114,7 @@ fn spawn_colliders(
                                 ..default()
                             },
                             transform: collider.transform,
-                            texture: asset_server.load("Textures\\Rooms\\cldr.png"),
+                            texture: tex,
                             ..default()
                         },
                         RoomId(room.backdrop_path.clone())
@@ -204,10 +214,10 @@ fn load_level_room_data(
 ) {
     //for each file in the rooms folder load the room data
     let rooms_path: String;
-    if is_in_windows() {
-        rooms_path = format!("Assets\\Textures\\Rooms\\L{}", current_level.0);
+    if IS_IN_WINDOWS{
+        rooms_path = format!("Assets\\textures\\rooms\\L{}", current_level.0);
     } else {
-        rooms_path = format!("Assets\\Textures/Rooms/L{}", current_level.0);
+        rooms_path = format!("Assets\\textures/rooms/L{}", current_level.0);
     }
     println!("Looking for rooms in: {}", rooms_path);
 
@@ -227,7 +237,7 @@ fn load_level_room_data(
                 
                 //remove the assets folder from the path as the asset server will add it back
                 let mut item_name: String = item.path().display().to_string();
-                if is_in_windows() {
+                if IS_IN_WINDOWS {
                     item_name = item_name.replace("Assets\\", "");
                 } else {
                     item_name = item_name.replace("Assets/", "");
@@ -282,6 +292,13 @@ fn load_level_room_data(
 
                     //spawns a sprite in debug mode to show the room border
                     if in_debug.0 {
+
+                        let tex;
+                        if IS_IN_WINDOWS{
+                            tex = asset_server.load("Textures\\rooms\\room_border.png");
+                        }else{
+                            tex = asset_server.load("Textures/rooms/room_border.png");
+                        }
                         commands.spawn((
                             SpriteBundle {
                                 sprite: Sprite {
@@ -300,7 +317,7 @@ fn load_level_room_data(
                                     scale: Vec3::new(room_area.width() as f32, room_area.height() as f32, 0.0),
                                     ..default()
                                 },
-                                texture: asset_server.load("Textures\\Rooms\\room_border.png"),
+                                texture: tex,
                                 ..default()
                             },
                             //RoomId(item_name.clone())
@@ -328,10 +345,10 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
     let mut collider_path: String = backdrop_path.replace("back", "cldr");
     collider_path = collider_path.replace(".png", ".svg");
     
-    if is_in_windows(){
-        collider_path = collider_path.replace("Textures", "Assets\\textures");
+    if IS_IN_WINDOWS{
+        collider_path = collider_path.replace("textures", "Assets\\textures");
     }else{
-        collider_path = collider_path.replace("Textures", "Assets/textures");
+        collider_path = collider_path.replace("textures", "Assets/textures");
     }
 
 
@@ -456,10 +473,10 @@ fn get_area(backdrop_path: &String, room_location: &Transform) -> Rect {
     let mut collider_path: String = backdrop_path.replace("back", "cldr");
     collider_path = collider_path.replace(".png", ".svg");
     
-    if is_in_windows(){
-        collider_path = collider_path.replace("Textures", "Assets\\textures");
+    if IS_IN_WINDOWS{
+        collider_path = collider_path.replace("textures", "Assets\\textures");
     }else{
-        collider_path = collider_path.replace("Textures", "Assets/textures");
+        collider_path = collider_path.replace("textures", "Assets/textures");
     }
 
     warn!("Calculating room area using: {}", collider_path);

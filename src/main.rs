@@ -14,6 +14,8 @@ const SCREEN_HEIGHT: f32 = 768.0;
 
 const PIXEL_SCALE: f32 = SCREEN_HEIGHT / 16.0;
 
+const IS_IN_WINDOWS: bool = cfg!(target_os = "windows");
+
 fn main() {
 
     App::new()
@@ -75,14 +77,6 @@ fn despawn_screen<T: Component>(
         commands.entity(entity).despawn_recursive();
     }
 }
-
-pub fn is_in_windows() -> bool {
-    #[cfg(target_os = "windows")]
-    return true;
-    #[cfg(not(target_os = "windows"))]
-    return false;
-}
-
 fn make_visible(mut window: Query<&mut Window>, frames: Res<FrameCount>) {
     if frames.0 == 3 {
         window.single_mut().visible = true;

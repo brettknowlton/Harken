@@ -1,4 +1,6 @@
-use bevy::a11y::accesskit::Rect;
+use std::{fs, io};
+
+use bevy::{a11y::accesskit::Rect, transform::commands};
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 
@@ -6,7 +8,7 @@ use log::warn;
 
 use crate::{game::{read_lines, ColliderType}, IS_IN_WINDOWS, PIXEL_SCALE};
 
-use super::{Collider, DebugMode, GameState, Player, };
+use super::{Collider, DebugMode, GameState, Player, Shadow, };
 
 use crate::resources::*;
 
@@ -27,20 +29,22 @@ pub fn room_plugin(app: &mut App){
 }
 
 
-#[derive(Component)]
+#[derive(Component, Clone, Debug)]
 struct Room {
+    identifier: String,
+
     location: Transform,
-
-    active: bool,
-    lifetime: u32,
-
     area: Rect,
 
     backdrop_path: String,
     decoration_path: String,
     foreground_path: String,
-
+    
     colliders: Vec<Collider>,
+
+    active: bool,
+    lifetime: u32,
+
 }
 
 #[derive(Component)]
@@ -86,7 +90,7 @@ fn display_rooms(
                     },
                     ..default()
                 },
-                RoomId(room.backdrop_path.clone())
+                RoomId(room.identifier.clone())
             ));
 
             //Decoration
@@ -111,7 +115,7 @@ fn display_rooms(
                         },
                         ..default()
                     }, 
-                    RoomId(room.backdrop_path.clone())
+                    RoomId(room.identifier.clone())
                 )
             );
 
@@ -137,7 +141,7 @@ fn display_rooms(
                         },
                         ..default()
                     }, 
-                    RoomId(room.backdrop_path.clone())
+                    RoomId(room.identifier.clone())
                 )
             );
         }//end of if active
@@ -162,7 +166,7 @@ fn spawn_colliders(
             for collider in &room.colliders {
                 commands.spawn((
                     *collider,
-                    
+                    RoomId(room.identifier.clone())
                 ));
     
                 if in_debug.0 {
@@ -187,7 +191,7 @@ fn spawn_colliders(
                             texture: tex,
                             ..default()
                         },
-                        RoomId(room.backdrop_path.clone())
+                        RoomId(room.identifier.clone())
                     ));
                 }
             }
@@ -199,7 +203,7 @@ fn spawn_colliders(
 
 fn room_status(
     mut rooms: Query<&mut Room>,
-    players: Query<(&Transform, &Player)>,
+    players: Query<(&Transform, &Player), Without<Shadow>>,
     mut game_state: ResMut<NextState<GameState>>,
 ) {
     'rooms: for mut room in &mut rooms {
@@ -269,7 +273,19 @@ fn despawn_rooms(
     }
 }
 
+fn read_directory(path: &String) -> Result<fs::ReadDir, io::Error> {
+    let paths = fs::read_dir(path);
 
+    match paths {
+        Ok(_) => {
+            paths
+        }
+        Err(_) => {
+            error!("Failed to find / read a directory");
+            paths
+        }
+    }
+} 
 
 ///This function will load the room data from the rooms folder
 /// This function is scheduled by bevy and will run in the loadinglevel state
@@ -282,136 +298,135 @@ fn load_level_room_data(
     mut game_state: ResMut<NextState<GameState>>,
 ) {
     //for each file in the rooms folder load the room data
-    let rooms_path: String;
-    if IS_IN_WINDOWS{
-        rooms_path = format!("Assets\\textures\\rooms\\L{}", current_level.0);
-    } else {
-        rooms_path = format!("Assets\\textures/rooms/L{}", current_level.0);
-    }
+    let rooms_path: String = format!("Assets/textures/rooms/L{}", current_level.0);
     println!("Looking for rooms in: {}", rooms_path);
 
-    let paths = std::fs::read_dir(rooms_path);
-    match paths {
-        Ok(_) => {
-            info!("Found Rooms Folder");
-        }
-        Err(_) => {
-            warn!("Could not read rooms folder");
-        }
-    }
+    let paths = read_directory(&rooms_path);
+    
 
     for item in paths.unwrap() {
+
         match item {
             Ok(item) => {
-                
-                //remove the assets folder from the path as the asset server will add it back
-                let mut item_name: String = item.path().display().to_string();
-                if IS_IN_WINDOWS {
-                    item_name = item_name.replace("Assets\\", "");
-                } else {
-                    item_name = item_name.replace("Assets/", "");
-                }
-                info!("Found file: {}", item_name.clone());
 
-                
-                
-                //if the item is a backdrop we will create a room with the backdrop and colliders
-                if item_name.contains("back") {
+                match item.file_type() {
+                    Ok(file_type) => {
+                        if file_type.is_dir() {
+                            warn!("Found directory in rooms folder: {}", item.path().display());
+                            let new_room = create_room(item.path().display().to_string(),&asset_server);
+                            commands.spawn(
+                                new_room.clone()
+                            );
 
-                    let cleaner = item_name.replace("back", "").replace(".png", "");
-                    let location_info: Vec<&str> = cleaner.split("_").collect();
+                            if in_debug.0 {
 
-                    let location = &Transform {
-                        translation: Vec3::new(
-                            location_info[1].parse::<f32>().unwrap() * PIXEL_SCALE,
-                            location_info[2].parse::<f32>().unwrap() * PIXEL_SCALE,
-                            -1.0,
-                        ),
-                        scale: Vec3::new(6.0, 6.0, 0.0),
-                        ..default()
-                    };
+                                let tex: Handle<Image>;
+                                if IS_IN_WINDOWS{
+                                    tex = asset_server.load("textures\\rooms\\room_border.png");
+                                }else{
+                                    tex = asset_server.load("textures/rooms/room_border.png");
+                                }
+                                commands.spawn((
+                                    SpriteBundle {
+                                        sprite: Sprite {
+                                            custom_size: Some(Vec2::new(1.0, 1.0)),
+                                            anchor: Anchor::BottomLeft,
+                                            ..default()
+                                        },
+                                        transform: Transform {
+                                            translation: new_room.location.translation,
+                                            scale: Vec3::new(new_room.area.width() as f32, new_room.area.height() as f32, 0.0),
+                                            ..default()
+                                        },
+                                        texture: tex,
+                                        ..default()
+                                    },
+                                    RoomId(item.path().display().to_string())
+                                ));
+                            }
 
 
-                    warn!("Location: {:?}", location);
 
-                    println!("Spawning Room with backdrop: {:?}", item_name);
-
-
-                    let room_area = get_area(&item_name, location);
-                    let bg_path = item_name.clone();
-                    let fg_path = item_name.replace("back", "fore");
-                    let dec_path = item_name.replace("back", "deco");
-
-                    let collider_path = item_name.replace("back", "cldr");
-
-                    let colliders = load_colliders(
-                        collider_path,
-                        location,
-                        &room_area
-                    );
-
-                    let built_room = Room {
-                        location: *location,
-
-                        active: false,
-                        lifetime: 0,
-
-                        area: room_area,
-                        backdrop_path: item_name.clone(),
-                        decoration_path: dec_path,
-                        foreground_path: fg_path,
-
-                        colliders: colliders,
-                    };
-
-                    commands.spawn(built_room);
-
-                    //spawns a sprite in debug mode to show the room border
-                    if in_debug.0 {
-
-                        let tex;
-                        if IS_IN_WINDOWS{
-                            tex = asset_server.load("Textures\\rooms\\room_border.png");
-                        }else{
-                            tex = asset_server.load("Textures/rooms/room_border.png");
+                        }else {
+                            warn!("Found file in rooms folder, this may have been a mistake: {}", item.path().display());
                         }
-                        commands.spawn((
-                            SpriteBundle {
-                                sprite: Sprite {
-                                    custom_size: Some(Vec2::new(1.0, 1.0)),
-                                    anchor: Anchor::BottomLeft,
-                                    ..default()
-                                },
-    
-    
-                                transform: Transform {
-                                    translation: Vec3::new(
-                                        location_info[1].parse::<f32>().unwrap() * PIXEL_SCALE,
-                                        (0.0 - PIXEL_SCALE) + location_info[2].parse::<f32>().unwrap() * PIXEL_SCALE,
-                                        5.0,
-                                    ),
-                                    scale: Vec3::new(room_area.width() as f32, room_area.height() as f32, 0.0),
-                                    ..default()
-                                },
-                                texture: tex,
-                                ..default()
-                            },
-                            //RoomId(item_name.clone())
-                        )
-                        );
                     }
-
+                    Err(_) => {
+                        warn!("Could not read file type in rooms folder");
+                    }
                 }
-            }
+
+            },
             Err(_) => {
                 warn!("Could not read item in rooms folder");
             }
         }
-    }
 
     game_state.set(GameState::Loading);
-}
+}}
 
+
+fn create_room(directory_path: String, asset_server: &Res<AssetServer>) -> Room {
+    warn!("Creating Room from directory: {}", directory_path);
+
+
+    let location_info: Vec<&str> = directory_path.split("_").collect();
+    info!("Attempting to identify location in path: {:?}", location_info);
+
+    let location = Transform {
+        translation: Vec3::new(
+            location_info[1].parse::<f32>().unwrap() * PIXEL_SCALE,
+            location_info[2].parse::<f32>().unwrap() * PIXEL_SCALE,
+            -1.0,
+        ),
+        scale: Vec3::new(6.0, 6.0, 0.0),
+        ..default()
+    };
+    info!("Creating room at location:{:?}", location.translation);
+
+    let mut room = Room {
+        identifier: directory_path.clone(),
+        location: location,
+        area: Rect{..default()},
+        
+        backdrop_path: "".to_string(),
+        decoration_path: "".to_string(),
+        foreground_path: "".to_string(),
+        colliders: Vec::<Collider>::new(),
+
+        active: false,
+        lifetime: 0,
+    };
+
+    let room_items = read_directory(&directory_path).unwrap();
+    for item in room_items {
+        match item {
+            Ok(item) => {
+                let mut item_name = item.path().display().to_string();
+                item_name = item_name.replace("Assets/", "");
+
+                warn!("Found item: {} in room folder: {}", &directory_path, item_name);
+
+                if item_name.contains("back") {
+                    room.backdrop_path = item_name.clone();
+                } else if item_name.contains("fore") {
+                    room.foreground_path = item_name.clone();
+                } else if item_name.contains("deco") {
+                    room.decoration_path = item_name.clone();
+                } else if item_name.contains("cldr") {
+                    room.area = get_area(&item_name, &room.location);
+
+                    let colliders = load_colliders(item_name.clone(), &location, &room.area);
+                    room.colliders = colliders.clone();
+                }
+            }
+            Err(_) => {
+                warn!("Could not read item in room folder");
+            }
+        }
+    }
+    return room;
+}
 
 
 ///This function will parse the collider file and return a vector of colliders
@@ -449,7 +464,7 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
 
             //stop this loop if we find the SVG end tag
             if line.contains("/svg") {
-                println!("End of file: {}", line);
+                // println!("End of file: {}", line);
                 break;
             }
 
@@ -474,13 +489,13 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
 
                 match part.parse::<i32>() {
                     Ok(_) => {
-                        println!("Parsed: {}", part.parse::<i16>().unwrap());
+                        // println!("Parsed: {}", part.parse::<i16>().unwrap());
                         ints.push(part.parse::<i16>().unwrap());
                     }
 
                     Err(_) => {
                         if part.contains("#") {
-                            println!("Found Color: {}", part);
+                            // println!("Found Color: {}", part);
                             col = part;
                         } else {
                             warn!("Could not parse int from part: {}", part);
@@ -517,7 +532,7 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
             };
 
             col = col.split("#").collect::<Vec<_>>()[1];
-            println!("COLOR FOUND: {}", col);
+            // println!("COLOR FOUND: {}", col);
 
             // println!("Creating Collider with x:{} y:{} w:{} h:{} of type:{:?}", ((x as f32*PIXEL_SCALE)  - SCREEN_WIDTH/2.0), ((SCREEN_HEIGHT / 2.0) + (y as f32*PIXEL_SCALE) as f32), w as f32*PIXEL_SCALE, h as f32*PIXEL_SCALE, st);
             colliders.push(Collider {
@@ -539,7 +554,6 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
     }
     return colliders;
 }
-
 
 
 ///This function will parse the collider file and return the area of the room

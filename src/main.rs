@@ -38,7 +38,7 @@ fn main() {
 
 
         //RESOURCES BABY!
-        .insert_resource(resources::DebugMode(false))
+        .insert_resource(resources::DebugMode(true))
 
         .insert_resource(ClearColor(Color::srgba(0.0, 0.0, 0.0, 0.0)))
 

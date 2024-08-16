@@ -37,9 +37,15 @@ struct Player {
     vel_y: f32,
 }
 
+//Component used to tag the shadow of the player
+#[derive(Component)]
+struct Shadow;
+
+
+
 fn move_camera(
     mut camera: Query<&mut Transform, (With<Camera>, Without<Player>)>,
-    player: Query<&mut Transform, With<Player>>,
+    player: Query<&mut Transform, (With<Player>, Without<Shadow>)>,
 ) {
     //move camera to be centered on player
     //player's sprite is anchored to the bottom left
@@ -90,10 +96,50 @@ fn create_game_objects(
             vel_y: 0.0,
         },
     ));
+
+    let tex;
+
+    if IS_IN_WINDOWS {
+        tex = asset_server.load("textures\\player\\player_shadow.png");
+    }else {
+        tex = asset_server.load("textures/player/player_shadow.png");
+    }
+
+    commands.spawn(
+        (
+            SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(0.875, 0.5)),
+                    anchor: Anchor::CenterLeft,
+                    ..default()
+                },
+                texture: tex,
+                transform: Transform {
+                    translation: Vec3 {
+                        x: -1.0 * (PIXEL_SCALE * 0.125),
+                        z: 1.0,
+                        ..default()
+                    },
+                    scale: Vec3 {
+                        x: PIXEL_SCALE,
+                        y: PIXEL_SCALE,
+                        z: 1.0,
+                    },
+                    ..Default::default()
+                },
+                ..default()
+            },
+            Player {
+                vel_x: 0.0,
+                vel_y: 0.0,
+            },
+            Shadow,
+        )
+    );
 }
 
 fn collision_detection(
-    mut player: Query<(&mut Transform, &mut Player)>,
+    mut player: Query<(&mut Transform, &mut Player), Without<Shadow>>,
     colliders: Query<&Collider, Without<Player>>,
 ) {
     for (mut player_transform, _) in &mut player {
@@ -153,7 +199,9 @@ fn collision_detection(
 }
 
 fn player_movement(
-    mut players: Query<(&mut Transform, &mut Player, &mut Sprite)>,
+    mut players: Query<(&mut Transform, &mut Player, &mut Sprite), Without<Shadow>>,
+    
+    mut shadow_transform: Query<&mut Transform, With<Shadow>>,
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
@@ -180,6 +228,17 @@ fn player_movement(
         //apply friction
         player.vel_y = player.vel_y * 0.99 as i32 as f32;
         player.vel_x = player.vel_x * 0.99 as i32 as f32;
+
+        //move shadow to be under player
+        for mut tf in &mut shadow_transform {
+            *tf = transform.with_translation(
+                Vec3::new(
+                    transform.translation.x - (PIXEL_SCALE * 0.125),
+                    transform.translation.y,
+                    1.0,
+                )
+            );
+        }
     }
 }
 
@@ -190,7 +249,7 @@ enum ColliderType {
     ChangeRoom,
 }
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 struct Collider {
     transform: Transform,
     style: ColliderType,

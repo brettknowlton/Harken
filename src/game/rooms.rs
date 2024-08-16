@@ -1,11 +1,10 @@
-use bevy::render::texture;
-use bevy::{a11y::accesskit::Rect, scene::ron::de};
+use bevy::a11y::accesskit::Rect;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 
-use log::{debug, warn};
+use log::warn;
 
-use crate::{despawn_screen, game::{read_lines, ColliderType}, IS_IN_WINDOWS, PIXEL_SCALE};
+use crate::{game::{read_lines, ColliderType}, IS_IN_WINDOWS, PIXEL_SCALE};
 
 use super::{Collider, DebugMode, GameState, Player, };
 
@@ -38,6 +37,9 @@ struct Room {
     area: Rect,
 
     backdrop_path: String,
+    decoration_path: String,
+    foreground_path: String,
+
     colliders: Vec<Collider>,
 }
 
@@ -59,7 +61,13 @@ fn display_rooms(
             //this is an active room that should be displayed
             println!("Attempting to display room: {:?}", room.backdrop_path);
             let backdrop = asset_server.load(room.backdrop_path.clone());
+            let decoration = asset_server.load(room.decoration_path.clone());
+            let foreground = asset_server.load(room.foreground_path.clone());
+            let normalized_z_index = (1.0 / (1.0 + f64::exp(-0.1 * room.location.translation.y as f64))) as f32;
 
+            
+            //Background
+            //Z-Index ranges from -1 to 0
             commands.spawn((
                 SpriteBundle {
                     sprite: Sprite {
@@ -67,14 +75,73 @@ fn display_rooms(
                         ..default()
                     },
                     texture: backdrop,
-                    transform: room.location,
+                    transform: Transform {
+                        translation: Vec3::new(
+                            room.location.translation.x,
+                            room.location.translation.y,
+                            0.0 + normalized_z_index,
+                        ),
+                        scale: room.location.scale,
+                        ..default()
+                    },
                     ..default()
-                }, 
+                },
                 RoomId(room.backdrop_path.clone())
             ));
-        }
-    }
 
+            //Decoration
+            //Z-Index ranges from 0 to 1
+            commands.spawn(
+                (
+                    SpriteBundle {
+                        sprite: Sprite {
+                            anchor: Anchor::BottomLeft,
+                            ..default()
+                        },
+                        texture: decoration,
+                        transform: Transform {
+                            translation: Vec3::new(
+                                room.location.translation.x,
+                                room.location.translation.y,
+                                1.0 + normalized_z_index,
+                            ),
+                            
+                            scale: room.location.scale,
+                            .. default()
+                        },
+                        ..default()
+                    }, 
+                    RoomId(room.backdrop_path.clone())
+                )
+            );
+
+            //Foreground
+            //Z-Index ranges from 1 to 2
+            commands.spawn(
+                (
+                    SpriteBundle {
+                        sprite: Sprite {
+                            anchor: Anchor::BottomLeft,
+                            ..default()
+                        },
+                        texture: foreground,
+                        transform: Transform {
+                            translation: Vec3::new(
+                                room.location.translation.x,
+                                room.location.translation.y,
+                                3.0 + normalized_z_index,
+                            ),
+                                
+                            scale: room.location.scale,
+                            .. default()
+                        },
+                        ..default()
+                    }, 
+                    RoomId(room.backdrop_path.clone())
+                )
+            );
+        }//end of if active
+    }//end of for loop
     game_state.set(GameState::Running);
 }
 
@@ -139,7 +206,7 @@ fn room_status(
         //set room to active it the room's rect intersects with the player's rect
         let mut needs_reload = false;
         
-        'players: for (player_transform, _) in &players {
+        for (player_transform, _) in &players {
             let px_scale: f64 = PIXEL_SCALE as f64 * 0.625;
             let p_left: f64 = player_transform.translation.x as f64;
             let p_right: f64 = p_left + px_scale;
@@ -271,6 +338,10 @@ fn load_level_room_data(
 
 
                     let room_area = get_area(&item_name, location);
+                    let bg_path = item_name.clone();
+                    let fg_path = item_name.replace("back", "fore");
+                    let dec_path = item_name.replace("back", "deco");
+
                     let collider_path = item_name.replace("back", "cldr");
 
                     let colliders = load_colliders(
@@ -287,6 +358,9 @@ fn load_level_room_data(
 
                         area: room_area,
                         backdrop_path: item_name.clone(),
+                        decoration_path: dec_path,
+                        foreground_path: fg_path,
+
                         colliders: colliders,
                     };
 

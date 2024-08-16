@@ -35,13 +35,7 @@ pub fn game_plugin(app: &mut App) {
 struct Player {
     vel_x: f32,
     vel_y: f32,
-
-    hitbox: Rect,
 }
-
-//Component Used to tag a Static Object that does nothing
-#[derive(Component)]
-struct StaticObject;
 
 fn move_camera(
     mut camera: Query<&mut Transform, (With<Camera>, Without<Player>)>,
@@ -78,6 +72,10 @@ fn create_game_objects(
             },
             texture: tex,
             transform: Transform {
+                translation: Vec3 {
+                    z: 2.0,
+                    ..default()
+                },
                 scale: Vec3 {
                     x: PIXEL_SCALE,
                     y: PIXEL_SCALE,
@@ -90,8 +88,6 @@ fn create_game_objects(
         Player {
             vel_x: 0.0,
             vel_y: 0.0,
-
-            hitbox: Rect::new(0.0, 0.0, PIXEL_SCALE as f64 * 0.625, PIXEL_SCALE as f64 * 0.125),
         },
     ));
 }

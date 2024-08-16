@@ -93,10 +93,13 @@ fn spawn_colliders(
     for room in &rooms {
         if room.active {
             for collider in &room.colliders {
-                commands.spawn(*collider);
+                commands.spawn((
+                    *collider,
+                    
+                ));
     
                 if in_debug.0 {
-                    info!("A collider was created at: {:?}", collider.transform);
+                    // info!("A collider was created at: {:?}", collider.transform);
 
                     let tex;
 
@@ -132,12 +135,12 @@ fn room_status(
     players: Query<(&Transform, &Player)>,
     mut game_state: ResMut<NextState<GameState>>,
 ) {
-    for mut room in &mut rooms {
+    'rooms: for mut room in &mut rooms {
         //set room to active it the room's rect intersects with the player's rect
         let mut needs_reload = false;
         
-        for (player_transform, _) in &players {
-            let px_scale: f64 = PIXEL_SCALE as f64;
+        'players: for (player_transform, _) in &players {
+            let px_scale: f64 = PIXEL_SCALE as f64 * 0.625;
             let p_left: f64 = player_transform.translation.x as f64;
             let p_right: f64 = p_left + px_scale;
 
@@ -149,9 +152,8 @@ fn room_status(
 
             if room.area.intersect(p_rect).area() != 0.0 {
                 if room.active {
-                    // println!("Player is intersecting room: {:?}", room.location);
                     //player is in this room and it is already active
-                    return;
+                    continue 'rooms;
                 } else {
                     //player is intersecting an inactive room, we now need to re-load rooms and display
                     room.active = true;
@@ -506,14 +508,15 @@ fn get_area(backdrop_path: &String, room_location: &Transform) -> Rect {
             }
         }
     }
-    println!("Creating Room Area with coordinates: 0,0,{},{}", width * PIXEL_SCALE, height * PIXEL_SCALE);
-
-    Rect::new(
+    
+    let area = Rect::new(
         room_location.translation.x as f64, 
         room_location.translation.y as f64, 
         room_location.translation.x as f64 + (width * PIXEL_SCALE) as f64,
-        room_location.translation.y as f64 + (height * PIXEL_SCALE) as f64)
-
+        room_location.translation.y as f64 + (height * PIXEL_SCALE) as f64
+    );
+    println!("Creating Room Area : {:?}", area.clone());
+    area
 
     
 }

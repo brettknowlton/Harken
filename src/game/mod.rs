@@ -17,11 +17,13 @@ mod rooms;
 
 pub fn game_plugin(app: &mut App) {
     app
+    
+        .insert_resource(Time::<Fixed>::from_hz(64.0))
         .add_plugins(rooms::room_plugin)
         
         .add_systems(OnEnter(GameState::LevelLoading), create_game_objects)
 
-        .add_systems(Update, (
+        .add_systems(FixedUpdate, (
             player_movement,
             collision_detection,
             move_camera,
@@ -89,7 +91,7 @@ fn create_game_objects(
             vel_x: 0.0,
             vel_y: 0.0,
 
-            hitbox: Rect::new(0.0, 0.0, PIXEL_SCALE as f64, PIXEL_SCALE as f64 * 0.625),
+            hitbox: Rect::new(0.0, 0.0, PIXEL_SCALE as f64 * 0.625, PIXEL_SCALE as f64 * 0.125),
         },
     ));
 }

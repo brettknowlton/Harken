@@ -8,6 +8,7 @@ use bevy::{
 mod resources;
 mod menu;
 mod game;
+mod dev_tools;
 
 const SCREEN_WIDTH: f32 = 1056.0;
 const SCREEN_HEIGHT: f32 = 768.0;
@@ -39,6 +40,9 @@ fn main() {
 
         //RESOURCES BABY!
         .insert_resource(resources::DebugMode(true))
+        .insert_resource(resources::DevMode(true))
+
+        .add_plugins(dev_tools::dev_tools)
 
         .insert_resource(ClearColor(Color::srgba(0.0, 0.0, 0.0, 0.0)))
 

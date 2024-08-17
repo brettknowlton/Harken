@@ -13,7 +13,7 @@ use crate::{IS_IN_WINDOWS, PIXEL_SCALE};
 use super::resources::*;
 
 mod rooms;
-
+pub mod interaction;
 
 pub fn game_plugin(app: &mut App) {
     app
@@ -32,15 +32,28 @@ pub fn game_plugin(app: &mut App) {
 
 //Component Used to tag the player and give it velocity
 #[derive(Component)]
-struct Player {
+pub struct Player {
     vel_x: f32,
     vel_y: f32,
 }
 
 //Component used to tag the shadow of the player
 #[derive(Component)]
-struct Shadow;
+pub struct Shadow;
 
+#[derive(Component, Clone, Copy, PartialEq, Debug)]
+enum ColliderType {
+    RIGID,
+    Interactable,
+    ChangeRoom,
+}
+
+///Transform and style of a collider
+#[derive(Component, Clone, Copy, Debug)]
+struct Collider {
+    transform: Transform,
+    style: ColliderType,
+}
 
 
 fn move_camera(
@@ -242,18 +255,6 @@ fn player_movement(
     }
 }
 
-#[derive(Component, Clone, Copy, PartialEq, Debug)]
-enum ColliderType {
-    RIGID,
-    Interactable,
-    ChangeRoom,
-}
-
-#[derive(Component, Clone, Copy, Debug)]
-struct Collider {
-    transform: Transform,
-    style: ColliderType,
-}
 
 
 //Helper function for loading files

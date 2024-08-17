@@ -8,6 +8,7 @@ use log::warn;
 
 use crate::{game::{read_lines, ColliderType}, IS_IN_WINDOWS, PIXEL_SCALE};
 
+use super::interaction::Interactable;
 use super::{Collider, DebugMode, GameState, Player, Shadow, };
 
 use crate::resources::*;
@@ -67,7 +68,9 @@ fn display_rooms(
             let backdrop = asset_server.load(room.backdrop_path.clone());
             let decoration = asset_server.load(room.decoration_path.clone());
             let foreground = asset_server.load(room.foreground_path.clone());
-            let normalized_z_index = (1.0 / (1.0 + f64::exp(-0.1 * room.location.translation.y as f64))) as f32;
+
+            //normalize the z-index of the room based on its y position
+            let normalized_z_index = (1.0 / (1.0 + f64::exp(-0.1 * (room.location.translation.y / PIXEL_SCALE) as f64) ) ) as f32;
 
             
             //Background
@@ -199,8 +202,6 @@ fn spawn_colliders(
     }
 }
 
-
-
 fn room_status(
     mut rooms: Query<&mut Room>,
     players: Query<(&Transform, &Player), Without<Shadow>>,
@@ -247,7 +248,6 @@ fn room_status(
     }
 }
 
-
 fn despawn_rooms(
     mut rooms: Query<&mut Room>,
     mut room_objects: Query<(Entity, &RoomId)>,
@@ -263,7 +263,7 @@ fn despawn_rooms(
                 warn!("Despawning room: {:?}", room.location);
 
                 for room_object in &mut room_objects {
-                    if room_object.1.0 == room.backdrop_path {
+                    if room_object.1.0 == room.identifier {
                         //despawn this entity and all of its components
                         commands.entity(room_object.0).despawn_recursive();
                     }
@@ -299,7 +299,7 @@ fn load_level_room_data(
 ) {
     //for each file in the rooms folder load the room data
     let rooms_path: String = format!("Assets/textures/rooms/L{}", current_level.0);
-    println!("Looking for rooms in: {}", rooms_path);
+    info!("Looking for rooms in: {}", rooms_path);
 
     let paths = read_directory(&rooms_path);
     
@@ -312,7 +312,7 @@ fn load_level_room_data(
                 match item.file_type() {
                     Ok(file_type) => {
                         if file_type.is_dir() {
-                            warn!("Found directory in rooms folder: {}", item.path().display());
+                            info!("Found directory in rooms folder: {}", item.path().display());
                             let new_room = create_room(item.path().display().to_string(),&asset_server);
                             commands.spawn(
                                 new_room.clone()
@@ -365,6 +365,18 @@ fn load_level_room_data(
     game_state.set(GameState::Loading);
 }}
 
+fn load_level_interactables(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    current_level: Res<CurrentLevel>,
+    mut interactables: Query<&mut Interactable>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
+    let interactables_path: String = format!("Assets/textures/rooms/L{}/interactables.json", current_level.0);
+    info!("Looking for interactables in: {}", interactables_path);
+
+    game_state.set(GameState::Running);
+}
 
 fn create_room(directory_path: String, asset_server: &Res<AssetServer>) -> Room {
     warn!("Creating Room from directory: {}", directory_path);
@@ -427,7 +439,6 @@ fn create_room(directory_path: String, asset_server: &Res<AssetServer>) -> Room 
     }
     return room;
 }
-
 
 ///This function will parse the collider file and return a vector of colliders
 /// This function is NOT scheduled by bevy

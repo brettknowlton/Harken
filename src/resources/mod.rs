@@ -30,5 +30,8 @@ pub struct CurrentLevel(pub u32);
 //3rd: Room Varation
 
 
-#[derive(Resource)]
+#[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
 pub struct DebugMode(pub bool);
+
+#[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
+pub struct DevMode(pub bool);

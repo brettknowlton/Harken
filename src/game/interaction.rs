@@ -14,6 +14,7 @@ pub struct Interactable {
     pub dependancies: Vec<Entity>,
 }
 
+
 impl Interactable {
     pub fn new(boundary: Rect, valid_directions: Vec<Facing>) -> Self {
         Interactable {

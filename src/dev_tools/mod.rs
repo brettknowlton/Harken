@@ -1,7 +1,4 @@
-use std::fs::File;
-
 use bevy::prelude::*;
-use serde_json;
 
 use crate::{IS_IN_WINDOWS, PIXEL_SCALE};
 
@@ -53,9 +50,9 @@ fn insert_interactable(
             let tex;
 
             if IS_IN_WINDOWS {
-                tex = asset_server.load("Textures\\Rooms\\cldr.png");
+                tex = asset_server.load("textures\\rooms\\cldr.png");
             } else {
-                tex = asset_server.load("Textures/Rooms/cldr.png");
+                tex = asset_server.load("textures/rooms/cldr.png");
             }
 
             commands.spawn(SpriteBundle {
@@ -64,7 +61,7 @@ fn insert_interactable(
                     ..Default::default()
                 },
                 transform: Transform {
-                    translation: Vec3::new(x, y, 0.0),
+                    translation: Vec3::new(x, y, 50.0),
                     scale: Vec3::new(PIXEL_SCALE, PIXEL_SCALE, 1.0),
                     ..Default::default()
                 },
@@ -115,3 +112,5 @@ fn write_json(json_string: &str, file_path: &str) -> Result<(), std::io::Error> 
     info!("File Created Successfully");
     Ok(())
 }
+
+

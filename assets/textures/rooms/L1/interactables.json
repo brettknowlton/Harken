@@ -1,16 +1,1 @@
-[
-  {
-    "action": [],
-    "boundary": { "max": [144.0, 48.0], "min": [1.0, 1.0] },
-    "dependancies": [],
-    "interaction_count": 0,
-    "valid_directions": ["Up", "Down", "Left", "Right"]
-  },
-  {
-    "action": [],
-    "boundary": { "max": [144.0, 48.0], "min": [1.0, 1.0] },
-    "dependancies": [],
-    "interaction_count": 0,
-    "valid_directions": ["Up", "Down", "Left", "Right"]
-  }
-]
+[{"action":[],"boundary":{"max":[336.0,192.0],"min":[1.0,1.0]},"dependancies":[],"interaction_count":0,"valid_directions":["Up","Down","Left","Right"]},{"action":[],"boundary":{"max":[384.0,192.0],"min":[1.0,1.0]},"dependancies":[],"interaction_count":0,"valid_directions":["Up","Down","Left","Right"]},{"action":[],"boundary":{"max":[432.0,192.0],"min":[1.0,1.0]},"dependancies":[],"interaction_count":0,"valid_directions":["Up","Down","Left","Right"]},{"action":[],"boundary":{"max":[480.0,192.0],"min":[1.0,1.0]},"dependancies":[],"interaction_count":0,"valid_directions":["Up","Down","Left","Right"]}]

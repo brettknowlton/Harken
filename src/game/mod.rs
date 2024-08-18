@@ -1,8 +1,14 @@
 use bevy::a11y::accesskit::Rect;
 use bevy::prelude::*;
+use bevy::reflect::serde::ReflectDeserializer;
+use bevy::reflect::{GetTypeRegistration, TypeRegistry};
+use bevy::scene::ron;
 use bevy::sprite::Anchor;
+use serde::de::DeserializeSeed;
+use serde::{Deserialize, Serialize};
 
-use std::fs::File;
+use std::error::Error;
+use std::fs::{self, File};
 use std::io::{self, BufRead};
 use std::path::Path;
 
@@ -72,6 +78,8 @@ fn create_game_objects(
     mut commands: Commands, 
     asset_server: Res<AssetServer>
 ) {
+    
+
     
     let tex;
 
@@ -264,4 +272,65 @@ where
 
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
+}
+
+
+
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct InteractableStuff {
+//     action: String,
+//     boundary: Boundary,
+//     dependancies: String,
+//     interaction_count: i32,
+//     valid_directions: Vec<Directions>,
+// }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Boundary {
+    max: Vec<f32>,
+    min: Vec<f32>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum Directions {
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+
+fn spawn_something<T>(mut commands: Commands, path: &Path) 
+    -> Result<(), Box<dyn Error>> 
+        where T: for <'de>Deserialize<'de> + FromReflect + Component + TypePath + GetTypeRegistration + std::fmt::Debug
+{
+    let interactable_bytes = fs::read(path)?;
+    let mut registry = TypeRegistry::default();
+    registry.register::<Vec<T>>();
+    let mut deserializer = ron::Deserializer::from_bytes(&interactable_bytes).unwrap();
+    let reflect_deserializer = ReflectDeserializer::new(&registry);
+    let output: Box<dyn Reflect> = reflect_deserializer.deserialize(&mut deserializer).unwrap();
+    let value: Vec<T> = <Vec<T> as FromReflect>::from_reflect(&*output).unwrap();
+    for item in value {
+        println!("item: {item:#?}");
+        commands.spawn(item);
+    }
+    
+    Ok(())
+}
+
+fn spawn_interactable(mut commands: Commands) -> Result<(), Box<dyn Error>> {
+    let interactable_bytes = fs::read("assets/textures/rooms/L1/interactables.json")?;
+    let mut registry = TypeRegistry::default();
+    registry.register::<Vec<Interaction>>();
+    let mut deserializer = ron::Deserializer::from_bytes(&interactable_bytes).unwrap();
+    let reflect_deserializer = ReflectDeserializer::new(&registry);
+    let output: Box<dyn Reflect> = reflect_deserializer.deserialize(&mut deserializer).unwrap();
+    let value: Vec<Interaction> = <Vec<Interaction> as FromReflect>::from_reflect(&*output).unwrap();
+    for item in value {
+        println!("item: {item:#?}");
+        commands.spawn(item);
+    }
+    
+    Ok(())
 }

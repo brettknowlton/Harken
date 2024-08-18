@@ -367,170 +367,9 @@ fn display_settings_menu_setup(mut commands: Commands, display_quality: Res<Disp
         });
 }
 
-
-/// Display and formatting for MainMenu, this is an old version and may just need to be deleted...
-
-// fn main_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>){
-//     println!("Entered Main Menu");
-//
-//     // Common style for all buttons on the screen
-//     let button_style = Style {
-//         width: Val::Px(250.0),
-//         height: Val::Px(65.0),
-//         margin: UiRect::all(Val::Px(20.0)),
-//         justify_content: JustifyContent::Center,
-//         align_items: AlignItems::Center,
-//         ..default()
-//     };
-//     let button_icon_style = Style {
-//         width: Val::Px(30.0),
-//         // This takes the icons out of the flexbox flow, to be positioned exactly
-//         position_type: PositionType::Absolute,
-//         // The icon will be close to the left border of the button
-//         left: Val::Px(10.0),
-//         ..default()
-//     };
-//     let button_text_style = TextStyle {
-//         font_size: 40.0,
-//         color: TEXT_COLOR,
-//         ..default()
-//     };
-//
-//     commands
-//         .spawn((
-//             NodeBundle {
-//                 style: Style {
-//                     width: Val::Percent(100.0),
-//                     height: Val::Percent(100.0),
-//                     align_items: AlignItems::Center,
-//                     justify_content: JustifyContent::Center,
-//                     ..default()
-//                 },
-//                 ..default()
-//             },
-//             OnMainMenu,
-//         ))
-//         .with_children(|parent| {
-//             parent
-//                 .spawn(
-//                     NodeBundle {
-//                         style: Style {
-//                             flex_direction: FlexDirection::Column,
-//                             align_items: AlignItems::Center,
-//                             ..default()
-//                         },
-//                         background_color: CRIMSON.into(),
-//                         ..default()
-//                 })
-//                 .with_children(|parent| {
-//                     // Display the game name
-//                     parent.spawn(
-//                         TextBundle::from_section(
-//                             "harken",
-//                             TextStyle {
-//                                 font_size: 80.0,
-//                                 color: TEXT_COLOR,
-//                                 ..default()
-//                             },
-//                         )
-//                         .with_style(Style {
-//                             margin: UiRect::all(Val::Px(50.0)),
-//                             ..default()
-//                         }),
-//                     );
-//
-//                     // Display three buttons for each action available from the main menu:
-//                     // - new game
-//                     // - settings
-//                     // - quit
-//                     parent
-//                         .spawn((
-//                             ButtonBundle {
-//                                 style: button_style.clone(),
-//                                 background_color: NORMAL_BUTTON.into(),
-//                                 ..default()
-//                             },
-//                             MenuButtonAction::Play,
-//                         ))
-//                         .with_children(|parent| {
-//                             let icon = asset_server.load("textures/Game Icons/right.png");
-//                             parent.spawn(ImageBundle {
-//                                 style: button_icon_style.clone(),
-//                                 image: UiImage::new(icon),
-//                                 ..default()
-//                             });
-//                             parent.spawn(TextBundle::from_section(
-//                                 "New Game",
-//                                 button_text_style.clone(),
-//                             ));
-//                         });
-//                     parent
-//                         .spawn((
-//                             ButtonBundle {
-//                                 style: button_style.clone(),
-//                                 background_color: NORMAL_BUTTON.into(),
-//                                 ..default()
-//                             },
-//                             MenuButtonAction::Continue,
-//                         ))
-//                         .with_children(|parent|{
-//                             let icon = asset_server.load("textures/Game Icons/right.png");
-//                             parent.spawn(ImageBundle {
-//                                 style: button_icon_style.clone(),
-//                                 image: UiImage::new(icon),
-//                                 ..default()
-//                             });
-//                             parent.spawn(TextBundle::from_section(
-//                                 "Continue",
-//                                 button_text_style.clone(),
-//                             ));
-//                         });
-//                     parent
-//                         .spawn((
-//                             ButtonBundle {
-//                                 style: button_style.clone(),
-//                                 background_color: NORMAL_BUTTON.into(),
-//                                 ..default()
-//                             },
-//                             MenuButtonAction::Settings,
-//                         ))
-//                         .with_children(|parent| {
-//                             let icon = asset_server.load("textures/Game Icons/wrench.png");
-//                             parent.spawn(ImageBundle {
-//                                 style: button_icon_style.clone(),
-//                                 image: UiImage::new(icon),
-//                                 ..default()
-//                             });
-//                             parent.spawn(TextBundle::from_section(
-//                                 "Settings",
-//                                 button_text_style.clone(),
-//                             ));
-//                         });
-//                     parent
-//                         .spawn((
-//                             ButtonBundle {
-//                                 style: button_style,
-//                                 background_color: NORMAL_BUTTON.into(),
-//                                 ..default()
-//                             },
-//                             MenuButtonAction::Quit,
-//                         ))
-//                         .with_children(|parent| {
-//                             let icon = asset_server.load("textures/Game Icons/exitRight.png");
-//                             parent.spawn(ImageBundle {
-//                                 style: button_icon_style,
-//                                 image: UiImage::new(icon),
-//                                 ..default()
-//                             });
-//                             parent.spawn(TextBundle::from_section("Quit", button_text_style));
-//                         });
-//                 });
-//         }); // 
-//     }
-
 fn alt_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
-    let background_texture = asset_server.load("textures/Roomsbackground.png");
+    let background_texture = asset_server.load("textures/rooms/interaction_boundary.png");
 
     commands.spawn((
         SpriteBundle{
@@ -621,7 +460,7 @@ fn alt_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ))
 
             .with_children(|parent| {
-                let icon = asset_server.load("textures/Game Icons/right.png");
+                let icon = asset_server.load("icons/right.png");
                 parent.spawn(ImageBundle {
                     style: button_icon_style.clone(),
                     image: UiImage::new(icon),
@@ -642,7 +481,7 @@ fn alt_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 MenuButtonAction::Continue,
             ))
             .with_children(|parent|{
-                let icon = asset_server.load("textures/Game Icons/right.png");
+                let icon = asset_server.load("icons/right.png");
                 parent.spawn(ImageBundle {
                     style: button_icon_style.clone(),
                     image: UiImage::new(icon),
@@ -662,7 +501,7 @@ fn alt_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 MenuButtonAction::Settings,
             ))
             .with_children(|parent| {
-                let icon = asset_server.load("textures/Game Icons/wrench.png");
+                let icon = asset_server.load("icons/wrench.png");
                 parent.spawn(ImageBundle {
                     style: button_icon_style.clone(),
                     image: UiImage::new(icon),
@@ -682,7 +521,7 @@ fn alt_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 MenuButtonAction::Quit,
             ))
             .with_children(|parent| {
-                let icon = asset_server.load("textures/Game Icons/exitRight.png");
+                let icon = asset_server.load("icons/exitRight.png");
                 parent.spawn(ImageBundle {
                     style: button_icon_style,
                     image: UiImage::new(icon),
@@ -693,6 +532,8 @@ fn alt_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
     });
 }
+
+
 fn menu_action(
     interaction_query: Query<(&Interaction, &MenuButtonAction), (Changed<Interaction>, With<Button>)>,
     mut app_exit_events: EventWriter<AppExit>,
@@ -775,7 +616,7 @@ fn setting_button<T: Resource + Component + PartialEq + Copy>(
 }
 
 fn splash_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let icon = asset_server.load("Textures/ham&bread.png");
+    let icon = asset_server.load("textures/ham&bread.png");
     // Display the logo
     commands
         .spawn((

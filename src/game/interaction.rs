@@ -1,6 +1,5 @@
-use bevy::{prelude::*};
+use bevy::prelude::*;
 use serde::{self, ser::SerializeStruct};
-use serde_json;
 
 
 //interactable object component
@@ -12,7 +11,6 @@ pub struct Interactable {
     pub interaction_count: u32,
 
     pub action: Vec<String>,
-
     pub dependancies: Vec<Entity>,
 }
 

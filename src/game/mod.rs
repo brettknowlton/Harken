@@ -76,9 +76,9 @@ fn create_game_objects(
     let tex;
 
     if IS_IN_WINDOWS {
-        tex = asset_server.load("textures\\player\\player-singlet.png");
+        tex = asset_server.load("textures\\player\\player_singlet.png");
     }else {
-        tex = asset_server.load("textures/player/player-singlet.png");
+        tex = asset_server.load("textures/player/player_singlet.png");
     }
 
     commands.spawn((
@@ -92,7 +92,7 @@ fn create_game_objects(
             texture: tex,
             transform: Transform {
                 translation: Vec3 {
-                    z: 2.0,
+                    z: 21.5,
                     ..default()
                 },
                 scale: Vec3 {
@@ -130,7 +130,7 @@ fn create_game_objects(
                 transform: Transform {
                     translation: Vec3 {
                         x: -1.0 * (PIXEL_SCALE * 0.125),
-                        z: 1.0,
+                        z: 10.5,
                         ..default()
                     },
                     scale: Vec3 {
@@ -255,9 +255,7 @@ fn player_movement(
     }
 }
 
-
-
-//Helper function for loading files
+///Helper function for loading files
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
     P: AsRef<Path>,

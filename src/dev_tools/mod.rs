@@ -40,7 +40,7 @@ fn insert_interactable(
         let y = (player_transform.translation.y / PIXEL_SCALE).round() * PIXEL_SCALE;
 
         let interactable = Interactable::new(
-            Rect::new(x, y, 1.0, 1.0),
+            Rect::new(x, y, x + PIXEL_SCALE, y + PIXEL_SCALE),
             vec![Facing::Up, Facing::Down, Facing::Left, Facing::Right],
         );
 

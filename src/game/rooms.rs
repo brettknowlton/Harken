@@ -8,7 +8,6 @@ use log::warn;
 
 use crate::{game::{read_lines, ColliderType}, IS_IN_WINDOWS, PIXEL_SCALE};
 
-use super::interaction::Interactable;
 use super::{Collider, DebugMode, GameState, Player, Shadow, };
 
 use crate::resources::*;
@@ -16,7 +15,6 @@ use crate::resources::*;
 
 pub fn room_plugin(app: &mut App){
     app
-        .add_systems(OnEnter(GameState::LevelLoading), load_level_room_data)
 
         .add_systems(OnEnter(GameState::Loading), (
             spawn_colliders,
@@ -296,7 +294,7 @@ fn read_directory(path: &String) -> Result<fs::ReadDir, io::Error> {
 
 ///This function will load the room data from the rooms folder
 /// This function is scheduled by bevy and will run in the loadinglevel state
-fn load_level_room_data(
+pub fn load_level_room_data(
     mut commands: Commands,
     in_debug: Res<DebugMode>,
     asset_server: Res<AssetServer>,
@@ -352,6 +350,7 @@ fn load_level_room_data(
                                     RoomId(item.path().display().to_string())
                                 ));
                             }
+                            info!("Room created at location: {:?}", new_room.location.translation);
 
 
 
@@ -372,18 +371,6 @@ fn load_level_room_data(
 
     game_state.set(GameState::Loading);
 }}
-
-fn load_level_interactables(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    current_level: Res<CurrentLevel>,
-    mut interactables: Query<&mut Interactable>,
-    mut game_state: ResMut<NextState<GameState>>,
-) {
-    let interactables_path: String = format!("assets/textures/rooms/L{}/interactables.json", current_level.0);
-    info!("Looking for interactables in: {}", interactables_path);
-}
-
 
 ///creates a new room based on the path of a room directory, as long as the folder structure is correct this should be the only input this needs
 fn create_room(directory_path: String) -> Room {

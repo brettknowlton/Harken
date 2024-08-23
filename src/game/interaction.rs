@@ -1,10 +1,8 @@
-use bevy::{prelude::*};
-use serde::{self, ser::SerializeStruct};
-use serde_json;
-
+use bevy::prelude::*;
+use serde::ser::SerializeStruct;
 
 //interactable object component
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect, serde::Deserialize)]
 pub struct Interactable {
     pub boundary: Rect,
 
@@ -12,18 +10,18 @@ pub struct Interactable {
     pub interaction_count: u32,
 
     pub action: Vec<String>,
-
-    pub dependancies: Vec<Entity>,
+    pub dependancies: Vec<String>,
 }
+
 
 impl Interactable {
     pub fn new(boundary: Rect, valid_directions: Vec<Facing>) -> Self {
         Interactable {
-            boundary,
-            valid_directions,
-            interaction_count: 0,
             action: Vec::new(),
+            boundary,
             dependancies: Vec::new(),
+            interaction_count: 0,
+            valid_directions,
         }
     }
 
@@ -32,11 +30,11 @@ impl Interactable {
     }
     
     pub fn add_dependancy(&mut self, entity: Entity) {
-        self.dependancies.push(entity);
+        self.dependancies.push(entity.to_string());
     }
 
     pub fn clear_dependancy(&mut self, entity: Entity) {
-        self.dependancies.retain(|&x| x != entity);
+        self.dependancies.retain(|x| x.eq(&entity.to_string()));
     }
 
     pub fn has_dependancies(&self) -> bool {
@@ -60,23 +58,23 @@ impl serde::Serialize for Interactable {
     }
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect, serde::Serialize, serde::Deserialize)]
 pub enum Facing {
     Up,
     Down,
     Left,
     Right,
 }
-impl serde::Serialize for Facing {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            Facing::Up => serializer.serialize_str("Up"),
-            Facing::Down => serializer.serialize_str("Down"),
-            Facing::Left => serializer.serialize_str("Left"),
-            Facing::Right => serializer.serialize_str("Right"),
-        }
-    }
-}   
+// impl serde::Serialize for Facing {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         match self {
+//             Facing::Up => serializer.serialize_str("Up"),
+//             Facing::Down => serializer.serialize_str("Down"),
+//             Facing::Left => serializer.serialize_str("Left"),
+//             Facing::Right => serializer.serialize_str("Right"),
+//         }
+//     }
+// }   

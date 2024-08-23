@@ -1,8 +1,14 @@
 use bevy::a11y::accesskit::Rect;
 use bevy::prelude::*;
+use bevy::reflect::serde::ReflectDeserializer;
+use bevy::reflect::{GetTypeRegistration, TypeRegistry};
 use bevy::sprite::Anchor;
+use serde::de::{DeserializeOwned, DeserializeSeed};
+use serde::{Deserialize, Serialize};
+use serde_json::Deserializer;
 
-use std::fs::File;
+use std::error::Error;
+use std::fs::{self, File};
 use std::io::{self, BufRead};
 use std::path::Path;
 
@@ -21,7 +27,7 @@ pub fn game_plugin(app: &mut App) {
         .insert_resource(Time::<Fixed>::from_hz(64.0))
         .add_plugins(rooms::room_plugin)
         
-        .add_systems(OnEnter(GameState::LevelLoading), create_game_objects)
+        .add_systems(OnEnter(GameState::LevelLoading), (create_game_objects, rooms::load_level_room_data).chain())
 
         .add_systems(FixedUpdate, (
             player_movement,
@@ -72,13 +78,12 @@ fn create_game_objects(
     mut commands: Commands, 
     asset_server: Res<AssetServer>
 ) {
-    
     let tex;
 
     if IS_IN_WINDOWS {
-        tex = asset_server.load("textures\\player\\player-singlet.png");
+        tex = asset_server.load("textures\\player\\player_singlet.png");
     }else {
-        tex = asset_server.load("textures/player/player-singlet.png");
+        tex = asset_server.load("textures/player/player_singlet.png");
     }
 
     commands.spawn((
@@ -92,7 +97,7 @@ fn create_game_objects(
             texture: tex,
             transform: Transform {
                 translation: Vec3 {
-                    z: 2.0,
+                    z: 21.5,
                     ..default()
                 },
                 scale: Vec3 {
@@ -109,6 +114,7 @@ fn create_game_objects(
             vel_y: 0.0,
         },
     ));
+    info!("Created player");
 
     let tex;
 
@@ -130,7 +136,7 @@ fn create_game_objects(
                 transform: Transform {
                     translation: Vec3 {
                         x: -1.0 * (PIXEL_SCALE * 0.125),
-                        z: 1.0,
+                        z: 10.5,
                         ..default()
                     },
                     scale: Vec3 {
@@ -149,6 +155,11 @@ fn create_game_objects(
             Shadow,
         )
     );
+    info!("Created shadow");
+
+    //this doesnt work at the top of this function because of some borrowing issue, i want to learn why some day
+    new_spawn_something::<interaction::Interactable>(commands, "assets/textures/rooms/L1/interactables.json").unwrap();
+    info!("Created something");
 }
 
 fn collision_detection(
@@ -255,9 +266,7 @@ fn player_movement(
     }
 }
 
-
-
-//Helper function for loading files
+///Helper function for loading files
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
     P: AsRef<Path>,
@@ -266,4 +275,84 @@ where
 
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
+}
+
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct InteractableStuff {
+//     action: String,
+//     boundary: Rect,
+//     dependancies: Vec<String>,
+//     interaction_count: u32,
+//     valid_directions: Vec<Directions>,
+// }
+
+
+fn new_spawn_something<T>(mut commands: Commands, path: &str) 
+    -> Result<(), Box<dyn Error>> 
+where 
+    T: DeserializeOwned + Component + TypePath + std::fmt::Debug
+{
+    // Read the file content into a string
+    let file_content = fs::read_to_string(path)?;
+    println!("File read to string...");
+
+    // Deserialize the JSON array into a Vec<T>
+    let items: Vec<T> = serde_json::from_str(&file_content)?;
+    println!("Obtained items: {:?}", items);
+
+    // Spawn each item in the `items` vector as a Bevy entity
+    for item in items {
+        println!("Item: {:?}", item);
+        commands.spawn(item);
+    }
+    
+    Ok(())
+}
+
+fn spawn_something<T>(mut commands: Commands, path: &str) 
+    -> Result<(), Box<dyn Error>> 
+        where T: for <'de>Deserialize<'de> + FromReflect + Component + TypePath + GetTypeRegistration + std::fmt::Debug
+{
+    let data = fs::read_to_string(path)?;
+    println!("file read to bytes...");
+
+    let mut registry = TypeRegistry::default();
+    registry.register::<T>();
+    registry.register::<Vec<T>>();
+
+    let mut deserializer = serde_json::Deserializer::from_str(&data);
+    println!("Deserializer created...");
+
+    let reflect_deserializer = ReflectDeserializer::new(&registry);
+    println!("Reflect Deserializer created...");
+
+    let output: Result<Box<dyn Reflect>, serde_json::Error> = reflect_deserializer.deserialize(&mut deserializer);
+    println!("output: {output:#?}");
+
+    let value: Vec<T> = <Vec<T> as FromReflect>::from_reflect(&*output?).unwrap();
+    println!("obtained value: {value:#?}");
+
+
+    for item in value {
+        println!("item: {item:#?}");
+        commands.spawn(item);
+    }
+    
+    Ok(())
+}
+
+fn spawn_interactable(mut commands: Commands) -> Result<(), Box<dyn Error>> {
+    let data = fs::read_to_string("assets/textures/rooms/L1/interactables.json")?;
+    let mut registry = TypeRegistry::default();
+    registry.register::<Vec<Interaction>>();
+    let mut deserializer = Deserializer::from_str(&data);
+    let reflect_deserializer = ReflectDeserializer::new(&registry);
+    let output: Box<dyn Reflect> = reflect_deserializer.deserialize(&mut deserializer).unwrap();
+    let value: Vec<Interaction> = <Vec<Interaction> as FromReflect>::from_reflect(&*output).unwrap();
+    for item in value {
+        println!("item: {item:#?}");
+        commands.spawn(item);
+    }
+    
+    Ok(())
 }

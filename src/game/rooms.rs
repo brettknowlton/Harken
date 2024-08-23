@@ -8,7 +8,6 @@ use log::warn;
 
 use crate::{game::{read_lines, ColliderType}, IS_IN_WINDOWS, PIXEL_SCALE};
 
-use super::interaction::Interactable;
 use super::{Collider, DebugMode, GameState, Player, Shadow, };
 
 use crate::resources::*;
@@ -16,7 +15,6 @@ use crate::resources::*;
 
 pub fn room_plugin(app: &mut App){
     app
-        .add_systems(OnEnter(GameState::LevelLoading), load_level_room_data)
 
         .add_systems(OnEnter(GameState::Loading), (
             spawn_colliders,
@@ -26,7 +24,7 @@ pub fn room_plugin(app: &mut App){
         .add_systems(Update, (
             room_status,
             despawn_rooms,
-        ).run_if(in_state(GameState::Running)));
+        ).chain().run_if(in_state(GameState::Running)));
 }
 
 
@@ -70,11 +68,11 @@ fn display_rooms(
             let foreground = asset_server.load(room.foreground_path.clone());
 
             //normalize the z-index of the room based on its y position
-            let normalized_z_index = (1.0 / (1.0 + f64::exp(-0.1 * (room.location.translation.y / PIXEL_SCALE) as f64) ) ) as f32;
+            let normalized_z_index = (10.0 / (10.0 + f64::exp(-0.1 * (room.location.translation.y / PIXEL_SCALE) as f64) ) ) as f32;
 
             
             //Background
-            //Z-Index ranges from -1 to 0
+            //Z-Index ranges from 0 to 10
             commands.spawn((
                 SpriteBundle {
                     sprite: Sprite {
@@ -97,7 +95,7 @@ fn display_rooms(
             ));
 
             //Decoration
-            //Z-Index ranges from 0 to 1
+            //Z-Index ranges from 11 to 21
             commands.spawn(
                 (
                     SpriteBundle {
@@ -110,7 +108,7 @@ fn display_rooms(
                             translation: Vec3::new(
                                 room.location.translation.x,
                                 room.location.translation.y,
-                                1.0 + normalized_z_index,
+                                11.0 + normalized_z_index,
                             ),
                             
                             scale: room.location.scale,
@@ -123,7 +121,7 @@ fn display_rooms(
             );
 
             //Foreground
-            //Z-Index ranges from 1 to 2
+            //Z-Index ranges from 22 to 32
             commands.spawn(
                 (
                     SpriteBundle {
@@ -136,7 +134,7 @@ fn display_rooms(
                             translation: Vec3::new(
                                 room.location.translation.x,
                                 room.location.translation.y,
-                                3.0 + normalized_z_index,
+                                22.0 + normalized_z_index,
                             ),
                                 
                             scale: room.location.scale,
@@ -150,6 +148,59 @@ fn display_rooms(
         }//end of if active
     }//end of for loop
     game_state.set(GameState::Running);
+}
+
+fn room_status(
+    mut rooms: Query<&mut Room>,
+    players: Query<(&Transform, &Player), Without<Shadow>>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
+    'rooms: for mut room in &mut rooms {
+        //set room to active it the room's rect intersects with the player's rect
+        let mut needs_reload = false;
+        
+        for (player_transform, _) in &players {
+            let px_scale: f64 = PIXEL_SCALE as f64 * 0.625;
+            let p_left: f64 = player_transform.translation.x as f64;
+            let p_right: f64 = p_left + px_scale;
+
+            let p_bot: f64 = player_transform.translation.y as f64;
+            let py_scale: f64 = player_transform.scale.y as f64;
+            let p_top: f64 = p_bot + py_scale;
+
+            let p_rect = Rect::new(p_left, p_bot, p_right, p_top);
+
+            if room.area.intersect(p_rect).area() != 0.0 {
+                if room.active {
+                    //player is in this room and it is already active
+                    room.lifetime = 0;
+                    continue 'rooms;
+
+                } else {
+                    //player is intersecting an inactive room, we now need to re-load rooms and display
+                    if room.lifetime == 0{
+                        room.active = true;
+                        needs_reload = true;
+                    }else{
+                        room.active = true;
+                        room.lifetime = 0
+                    }
+                }
+            }else{
+                //player is not intersecting this room
+                if room.active {
+                    //we are no longer intersecting an active room that should be de-activated
+                    warn!("Player is not intersecting room that is still active: {:?}", room.location);
+                    room.active= false;
+                    room.lifetime = 128; 
+                }
+            }
+        }
+        if needs_reload {
+            game_state.set(GameState::Loading);
+        }
+
+    }
 }
 
 
@@ -178,9 +229,9 @@ fn spawn_colliders(
                     let tex;
 
                     if IS_IN_WINDOWS{
-                        tex = asset_server.load("Textures\\Rooms\\cldr.png");
+                        tex = asset_server.load("textures\\Rooms\\cldr.png");
                     }else{
-                        tex = asset_server.load("Textures/Rooms/cldr.png");
+                        tex = asset_server.load("textures/Rooms/cldr.png");
                     }
 
                     commands.spawn((
@@ -199,52 +250,6 @@ fn spawn_colliders(
                 }
             }
         }
-    }
-}
-
-fn room_status(
-    mut rooms: Query<&mut Room>,
-    players: Query<(&Transform, &Player), Without<Shadow>>,
-    mut game_state: ResMut<NextState<GameState>>,
-) {
-    'rooms: for mut room in &mut rooms {
-        //set room to active it the room's rect intersects with the player's rect
-        let mut needs_reload = false;
-        
-        for (player_transform, _) in &players {
-            let px_scale: f64 = PIXEL_SCALE as f64 * 0.625;
-            let p_left: f64 = player_transform.translation.x as f64;
-            let p_right: f64 = p_left + px_scale;
-
-            let p_bot: f64 = player_transform.translation.y as f64;
-            let py_scale: f64 = player_transform.scale.y as f64;
-            let p_top: f64 = p_bot + py_scale;
-
-            let p_rect = Rect::new(p_left, p_bot, p_right, p_top);
-
-            if room.area.intersect(p_rect).area() != 0.0 {
-                if room.active {
-                    //player is in this room and it is already active
-                    continue 'rooms;
-                } else {
-                    //player is intersecting an inactive room, we now need to re-load rooms and display
-                    room.active = true;
-                    needs_reload = true;
-                }
-            }else{
-                //player is not intersecting this room
-                if room.active {
-                    //we are no longer intersecting an active room that should be de-activated
-                    warn!("Player is not intersecting room that is still active: {:?}", room.location);
-                    room.active= false;
-                    room.lifetime = 128;
-                }
-            }
-        }
-        if needs_reload {
-            game_state.set(GameState::Loading);
-        }
-
     }
 }
 
@@ -289,7 +294,7 @@ fn read_directory(path: &String) -> Result<fs::ReadDir, io::Error> {
 
 ///This function will load the room data from the rooms folder
 /// This function is scheduled by bevy and will run in the loadinglevel state
-fn load_level_room_data(
+pub fn load_level_room_data(
     mut commands: Commands,
     in_debug: Res<DebugMode>,
     asset_server: Res<AssetServer>,
@@ -298,7 +303,7 @@ fn load_level_room_data(
     mut game_state: ResMut<NextState<GameState>>,
 ) {
     //for each file in the rooms folder load the room data
-    let rooms_path: String = format!("Assets/textures/rooms/L{}", current_level.0);
+    let rooms_path: String = format!("assets/textures/rooms/L{}", current_level.0);
     info!("Looking for rooms in: {}", rooms_path);
 
     let paths = read_directory(&rooms_path);
@@ -312,20 +317,21 @@ fn load_level_room_data(
                 match item.file_type() {
                     Ok(file_type) => {
                         if file_type.is_dir() {
-                            info!("Found directory in rooms folder: {}", item.path().display());
-                            let new_room = create_room(item.path().display().to_string(),&asset_server);
+                            // info!("Found directory in rooms folder: {}", item.path().display());
+                            let new_room = create_room(item.path().display().to_string());
+                            info!("Creating room with data: {:?}", &new_room);
+
                             commands.spawn(
                                 new_room.clone()
                             );
 
-                            if in_debug.0 {
-
-                                let tex: Handle<Image>;
-                                if IS_IN_WINDOWS{
-                                    tex = asset_server.load("textures\\rooms\\room_border.png");
+                            if in_debug.0 {//this needs to be moved! Once a room despawns there is no way for it to return
+                                println!("SPAWNING ROOM BORDER");
+                                let tex: Handle<Image> = if IS_IN_WINDOWS{
+                                    asset_server.load("textures\\rooms\\room_border.png")
                                 }else{
-                                    tex = asset_server.load("textures/rooms/room_border.png");
-                                }
+                                    asset_server.load("textures/rooms/room_border.png")
+                                };
                                 commands.spawn((
                                     SpriteBundle {
                                         sprite: Sprite {
@@ -334,7 +340,7 @@ fn load_level_room_data(
                                             ..default()
                                         },
                                         transform: Transform {
-                                            translation: new_room.location.translation,
+                                            translation: new_room.location.translation.clone().with_z(50.0),
                                             scale: Vec3::new(new_room.area.width() as f32, new_room.area.height() as f32, 0.0),
                                             ..default()
                                         },
@@ -344,6 +350,7 @@ fn load_level_room_data(
                                     RoomId(item.path().display().to_string())
                                 ));
                             }
+                            info!("Room created at location: {:?}", new_room.location.translation);
 
 
 
@@ -365,25 +372,12 @@ fn load_level_room_data(
     game_state.set(GameState::Loading);
 }}
 
-fn load_level_interactables(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    current_level: Res<CurrentLevel>,
-    mut interactables: Query<&mut Interactable>,
-    mut game_state: ResMut<NextState<GameState>>,
-) {
-    let interactables_path: String = format!("Assets/textures/rooms/L{}/interactables.json", current_level.0);
-    info!("Looking for interactables in: {}", interactables_path);
-
-    game_state.set(GameState::Running);
-}
-
-fn create_room(directory_path: String, asset_server: &Res<AssetServer>) -> Room {
-    warn!("Creating Room from directory: {}", directory_path);
-
+///creates a new room based on the path of a room directory, as long as the folder structure is correct this should be the only input this needs
+fn create_room(directory_path: String) -> Room {
+    // info!("Creating Room from directory: {}", directory_path);
 
     let location_info: Vec<&str> = directory_path.split("_").collect();
-    info!("Attempting to identify location in path: {:?}", location_info);
+    // info!("Attempting to identify location in path: {:?}", location_info);
 
     let location = Transform {
         translation: Vec3::new(
@@ -394,6 +388,8 @@ fn create_room(directory_path: String, asset_server: &Res<AssetServer>) -> Room 
         scale: Vec3::new(6.0, 6.0, 0.0),
         ..default()
     };
+
+
     info!("Creating room at location:{:?}", location.translation);
 
     let mut room = Room {
@@ -411,13 +407,14 @@ fn create_room(directory_path: String, asset_server: &Res<AssetServer>) -> Room 
     };
 
     let room_items = read_directory(&directory_path).unwrap();
+
     for item in room_items {
         match item {
             Ok(item) => {
                 let mut item_name = item.path().display().to_string();
-                item_name = item_name.replace("Assets/", "");
+                item_name = item_name.replace("assets/", "");
 
-                warn!("Found item: {} in room folder: {}", &directory_path, item_name);
+                warn!("Found item: {} in room folder: {}", item_name, &directory_path);
 
                 if item_name.contains("back") {
                     room.backdrop_path = item_name.clone();
@@ -446,15 +443,9 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
 
     let mut collider_path: String = backdrop_path.replace("back", "cldr");
     collider_path = collider_path.replace(".png", ".svg");
-    
-    if IS_IN_WINDOWS{
-        collider_path = collider_path.replace("textures", "Assets\\textures");
-    }else{
-        collider_path = collider_path.replace("textures", "Assets/textures");
-    }
 
 
-    warn!("parsing level colliders from: {}", collider_path);
+    info!("parsing level colliders from: {}", collider_path);
 
     let mut colliders = Vec::<Collider>::new();
     let mut i = 0;
@@ -468,7 +459,7 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
             //line zero is not useful to us so we will increment i at the beginning of the loop to skip index 0
             i += 1;
 
-            //the rest logic is not useful for the first 2 lines so we will skip them after this.
+            //the first 2 lines are not useful
             if i <= 2 {
                 continue;
             }
@@ -527,7 +518,7 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
                     3 => h = item,
 
                     _ => {
-                        warn!("This should never print")
+                        error!("This should never print")
                     }
                 }
                 count += 1;
@@ -554,7 +545,7 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
                     translation: Vec3::new(
                         room_location.translation.x + x as f32 * PIXEL_SCALE,
                         (room_area.height() as f32 - (1.0 * PIXEL_SCALE)) as f32+ room_location.translation.y - (y as f32 * PIXEL_SCALE),
-                        5.0
+                        50.0
                     ),
                     scale: Vec3::new(w as f32 * PIXEL_SCALE, h as f32 * PIXEL_SCALE, 0.0),
                     ..default()
@@ -572,38 +563,31 @@ fn load_colliders(backdrop_path: String, room_location: &Transform, room_area: &
 /// This function is NOT scheduled by bevy
 fn get_area(backdrop_path: &String, room_location: &Transform) -> Rect {
     let mut collider_path: String = backdrop_path.replace("back", "cldr");
+    info!("Calculating room area using: {}", collider_path);
     collider_path = collider_path.replace(".png", ".svg");
-    
-    if IS_IN_WINDOWS{
-        collider_path = collider_path.replace("textures", "Assets\\textures");
-    }else{
-        collider_path = collider_path.replace("textures", "Assets/textures");
-    }
+    collider_path = collider_path.replace("textures", "assets/textures");
 
-    warn!("Calculating room area using: {}", collider_path);
+    info!("AFTER: Calculating room area using: {}", collider_path);
 
     let mut i = 0;
 
     let mut height = 0.0;
     let mut width = 0.0;
-    if let Ok(lines) = read_lines(collider_path) {
+    if let Ok(lines) = read_lines(&collider_path) {
         // Consumes the iterator, returns an (Optional) String
         for line in lines.flatten() {
-            warn!("{}", line);
+            println!("{:?} Line {}:{}", &collider_path, &i, line);
 
             i += 1;
-            if i > 2 {
-                break;
-            }
-            //the rest logic is not useful for the first 2 lines so we will skip them after this.
-            if i <= 2 {
+            
                 //line 2 contains the SVG info for width and height which we will use to find the size of the room
-                if i == 2 {
-                    let lineparts = line.split("\"").collect::<Vec<_>>();
-                    width = lineparts[3].parse::<u32>().unwrap() as f32;
-                    height = lineparts[5].parse::<u32>().unwrap() as f32;
-                }
-                continue;
+            if i == 2 {
+                let lineparts = line.split("\"").collect::<Vec<_>>();
+                width = lineparts[3].parse::<u32>().unwrap() as f32;
+                height = lineparts[5].parse::<u32>().unwrap() as f32;
+
+                println!("Found w: {width:?} and h: {height:?}");
+                break;
             }
         }
     }
